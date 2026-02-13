@@ -1,0 +1,1 @@
+en el uso de bd debería crear un adapter entre menejoToken y crudP para que se encargue de formatear las consultas, pero no voy a cambiar de bd por lo que no lo voy a hacer ya que es más complejidad innecesaria 
