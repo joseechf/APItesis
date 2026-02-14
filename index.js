@@ -20,10 +20,10 @@ dotenv.config()
 //const secret = process.env.ACCESS_TOKEN_SECRET
 const app = express()
 const corsOptions = {
-  origin: ['http://localhost:8080'],   // origen exacto de Flutter Web
-  //origin: true,
+  //origin: ['http://localhost:8080'],   // origen exacto de Flutter Web
+  origin: true,
   credentials: true,                    // permite cookies / auth
-  optionsSuccessStatus: 200             // algunos navegadores (IE11) lo agradecen
+  optionsSuccessStatus: 200             // necesario para algunos navegadores
 };
 
 app.use(cors(corsOptions));
@@ -39,7 +39,7 @@ app.use(routerPublicFlora); //el get flora es público
 app.use(
   '/imagenes',
   express.static(path.join(ROOT_PATH, 'public/imagenes'))
-); //servir imagenes de forma estatica, cambiar a nginx
+);
 
 app.use(authMiddleware, async (req, res, next) => {
   console.log('authMiddleware...')
@@ -74,8 +74,8 @@ app.use((req, res) => {
   res.send(' NO ENCONTRAMOS ESA RUTA ')
 })
 
-const port = process.env.PORT ?? 3000
+const PORT = process.env.PORT || 3000;
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`ESCUCHANDO EN PUERTO: ${port}`)
-})
+app.listen(PORT, () => {
+  console.log(`ESCUCHANDO EN PUERTO: ${PORT}`);
+});

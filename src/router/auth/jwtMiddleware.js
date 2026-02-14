@@ -15,9 +15,6 @@ function getKey(header, callback) {
         const signingKey = key.getPublicKey();
         callback(null, signingKey);
     });
-    /*client.getSigningKey(header.kid, (err, key) => {
-        cb(null, key?.getPublicKey());
-    });*/
 }
 
 export function authMiddleware(req, res, next) {
