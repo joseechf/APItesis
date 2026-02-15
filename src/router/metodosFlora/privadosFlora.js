@@ -112,7 +112,7 @@ routerPrivadoFlora.post('/insertImagen', upload.single('imagen'), (req, res) => 
         // Fuerza .jpg
         const nombre = `${nombreCientifico}_${Date.now()}.jpg`;
 
-        const ROOT_PATH = path.join(__dirname, '../../..');
+        const ROOT_PATH = path.join(__dirname, '../../../..');
         const dir = path.join(ROOT_PATH, 'public', 'imagenes');
         const file = path.join(dir, nombre);
 
@@ -143,7 +143,7 @@ routerPrivadoFlora.delete('/deleteImagen', (req, res) => {
     try {
         const parsed = new URL(url);
         const fileName = path.basename(parsed.pathname);
-        const ROOT_PATH = path.join(__dirname, '../../..');
+        const ROOT_PATH = path.join(__dirname, '../../../..');
         const filePath = path.join(ROOT_PATH, 'public', 'imagenes', fileName);
 
         if (fs.existsSync(filePath)) {

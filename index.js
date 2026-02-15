@@ -41,6 +41,29 @@ app.use(
   express.static(path.join(ROOT_PATH, 'public/imagenes'))
 );
 
+// Al inicio de tu servidor
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
+// Verificar ruta de imágenes
+app.get('/test-imagenes', async (req, res) => {
+  const fs = await import('fs');
+  const imagenesPath = path.join(__dirname, '../public/imagenes');
+
+  try {
+    const files = fs.readdirSync(imagenesPath);
+    res.json({
+      path: imagenesPath,
+      exists: fs.existsSync(imagenesPath),
+      files: files
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.use(authMiddleware, async (req, res, next) => {
   console.log('authMiddleware...')
   try {
@@ -69,13 +92,15 @@ app.use(routerPrivadoFlora)
 
 app.use(routerAdmin)
 
-
-app.use((req, res) => {
+app.use((res) => {
   res.send(' NO ENCONTRAMOS ESA RUTA ')
 })
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
+const HOST = '0.0.0.0';  // Escuchar en todas las interfaces
 
-app.listen(PORT, () => {
-  console.log(`ESCUCHANDO EN PUERTO: ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`API corriendo en http://${HOST}:${PORT}`);
+  console.log(`Imágenes en http://${HOST}:${PORT}/imagenes/`);
 });
+
