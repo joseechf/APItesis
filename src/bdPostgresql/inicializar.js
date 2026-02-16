@@ -25,7 +25,6 @@ export default async function inicializar() {
         };
 
     } catch (error) {
-
         return {
             status: 500,
             error: {

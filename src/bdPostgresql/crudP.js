@@ -12,6 +12,7 @@ export async function conectar() {
             return cliente;
         }
     } catch (error) {
+        console.log('PROBLEMA DE CONEXION CON BD: ', error)
         throw { ok: false, error }
     }
 }
