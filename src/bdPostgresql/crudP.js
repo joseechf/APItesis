@@ -7,10 +7,11 @@ import { tablas } from "../util/detallesTabla.js";
 export async function conectar() {
     try {
         const respuesta = await inicializar()
-        if (respuesta.status === 200) {
-            const cliente = respuesta.data
-            return cliente;
+        if (respuesta.status !== 200) {
+            throw respuesta.error
         }
+        const cliente = respuesta.data
+        return cliente
     } catch (error) {
         console.log('PROBLEMA DE CONEXION CON BD: ', error)
         throw { ok: false, error }
