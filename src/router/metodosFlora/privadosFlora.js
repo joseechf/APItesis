@@ -55,7 +55,6 @@ routerPrivadoFlora.post('/insertflora', async (req, res) => {
     console.log('inicia insertar flora  ')
     const { filas } = req.body;
     console.log('TOTAL FILAS:', filas.length);
-
     let cliente;
     try {
         cliente = await conectar()

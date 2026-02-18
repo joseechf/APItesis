@@ -57,66 +57,6 @@ export async function insert(consulta, atributos) {
     }
 }
 
-/*
-export async function insertGenerico(cliente, config) {
-    console.log('insert generico')
-    const {
-        tablaPrincipal,
-        camposPrincipales,
-        valoresPrincipales,
-        relaciones = []
-    } = config
-    console.log(config)
-    try {
-        // INSERT principal
-        const consultaPrincipal =
-            generarConsultaInsert(tablaPrincipal, camposPrincipales)
-        //console.log('consulta: ',consultaPrincipal, ' valores: ', valoresPrincipales)
-        const { rows } = await cliente.query(
-            consultaPrincipal,
-            valoresPrincipales
-        )
-
-        const filaInsertada = rows[0]
-
-        // INSERT relaciones
-        for (const rel of relaciones) {
-            const {
-                tabla,
-                campos,
-                filas,
-                mapValores
-            } = rel
-            console.log('rel: ', rel)
-            if (!filas?.length) continue
-
-            const consultaRel = generarConsultaInsert(tabla, campos)
-            for (const fila of filas) {
-                console.log(consultaRel)
-                await cliente.query(
-                    consultaRel,
-                    mapValores(fila, filaInsertada)
-                )
-            }
-        }
-
-        return { ok: true, data: filaInsertada }
-
-    } catch (error) {
-        return {
-            ok: false,
-            errorFormateado: {
-                code: error.code,
-                table: error.table,
-                constraint: error.constraint,
-                message: error.message
-            }
-        }
-    }
-}*/
-
-
-
 
 export async function insertFloraCompleta(cliente, fila) {
     const sync = new TablaSyncRemote(cliente.pool)
@@ -252,42 +192,6 @@ export async function update(consulta, atributos) {
     }
 }
 
-/*export async function updateFlora(cliente, fila, nombre_cientifico) {
-    try {
-        let filaFiltrada = {}
-        const tablaFlora = tablas.find(t => t.tabla === 'Flora')
-        for (const campo of tablaFlora.campos) {
-            if (fila[campo] !== undefined) {
-                filaFiltrada[campo] = fila[campo]
-            }
-        }
-        if (Object.keys(filaFiltrada).length > 0) {
-            await updateTablaSimple(cliente, tablaFlora.tabla, filaFiltrada, nombre_cientifico)
-        }
-        for (const tabla of tablas) {
-            if (tabla.tabla === 'Flora') continue
-            const datosArray = fila[tabla.tabla] ?? [];
-            if (!Array.isArray(datosArray) || datosArray.length == 0) continue
-            await auxiliarUpdate(
-                cliente,
-                tabla.campos,
-                datosArray,
-                nombre_cientifico,
-                tabla.tabla
-            )
-        }
-        console.log('actualizacion Completa Flora terminada... ')
-        return { ok: true }
-    } catch (error) {
-        const errorFormateado = {
-            code: error.code,
-            tablaAfectada: error.table,
-            constraint: error.constraint,
-            message: error.message,
-        }
-        return { ok: false, errorFormateado };
-    }
-}*/
 
 
 export async function updateFlora(cliente, fila, nombre_cientifico) {

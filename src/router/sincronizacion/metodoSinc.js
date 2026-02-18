@@ -11,6 +11,7 @@ export class TablaSyncRemote {
     }
 
     async registrarSync({ cliente, id, fila, device }) {
+        console.log('voy a hashear: ', fila)
         const hash = calcularHash(fila);
 
         const { rows } = await cliente.query(
