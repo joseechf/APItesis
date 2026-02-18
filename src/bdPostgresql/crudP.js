@@ -144,7 +144,7 @@ export async function insertFloraCompleta(cliente, fila) {
             const datosArray = fila[tabla.tabla] ?? []
             if (!Array.isArray(datosArray) || datosArray.length === 0) continue
 
-            // borrar previos (misma lógica que local)
+            // borrar previos
             await cliente.query(
                 `DELETE FROM ${tabla.tabla} WHERE nombre_cientifico = $1`,
                 [fila.nombre_cientifico]
