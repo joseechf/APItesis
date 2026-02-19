@@ -54,7 +54,7 @@ routerPrivadoFlora.post('/getsincronizacion', async (req, res) => {
 routerPrivadoFlora.post('/insertflora', async (req, res) => {
     console.log('inicia insertar flora  ')
     const { filas } = req.body;
-    console.log('TOTAL FILAS:', filas.length);
+    console.log('obtengo para insertar: ', filas)
     let cliente;
     try {
         cliente = await conectar()
@@ -66,11 +66,7 @@ routerPrivadoFlora.post('/insertflora', async (req, res) => {
         let resultado
         await cliente.query("BEGIN");
         for (let fila of filas) {
-            console.log('IDX:', filas.indexOf(fila), 'CIENTIFICO:', fila.nombre_cientifico);
-
-            console.log('fila: ', fila);
             resultado = await insertFloraCompleta(cliente, fila)
-            console.log('proceso', resultado)
         }
         await cliente.query("COMMIT");
         console.log('finalizado : ', resultado)

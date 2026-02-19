@@ -4,7 +4,7 @@ import crypto from 'crypto';
 export function calcularHash(fila) {
     const copia = { ...fila };
     delete copia.imagenes;
-
+    console.log('voy a hashear: ', copia)
     const ordenado = Object.keys(copia)
         .sort()
         .reduce((acc, k) => {

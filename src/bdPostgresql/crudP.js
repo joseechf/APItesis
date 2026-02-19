@@ -60,7 +60,6 @@ export async function insert(consulta, atributos) {
 
 export async function insertFloraCompleta(cliente, fila) {
     const sync = new TablaSyncRemote(cliente.pool)
-
     try {
 
         const tablaFlora = tablas.find(t => t.tabla === 'Flora')
