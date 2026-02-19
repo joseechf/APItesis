@@ -42,7 +42,7 @@ routerPrivadoFlora.post('/getsincronizacion', async (req, res) => {
     const { ultSinc } = req.body;
     try {
         const consulta = `SELECT * FROM sincronizacion WHERE last_upd >= $1`;
-        const respuesta = await select(consulta, [ultSinc]);
+        const respuesta = await select(consulta, ultSinc);
         console.log('metadatos sincronizacion: ', respuesta.rows)
         res.json({ ok: true, respuesta: respuesta.rows });
     } catch (error) {
