@@ -3,7 +3,7 @@ import crypto from 'crypto';
 
 export function calcularHash(fila) {
     const copia = { ...fila };
-    delete copia.Imagen;
+    delete copia.imagenes;
 
     const ordenado = Object.keys(copia)
         .sort()
