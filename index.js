@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser'
 import routerPrivadoFlora from './src/router/metodosFlora/privadosFlora.js';
 import routerAdmin from './src/router/metodosAdmin.js';
 import authMiddleware from './src/router/auth/jwtMiddleware.js'
-//import resolveUserRole from './src/router/auth/getRol.js'
+import resolveUserRole from './src/router/auth/getRol.js'
 import routerPublicFlora from './src/router/metodosFlora/publicosFlora.js'
 
 import path from 'path';
@@ -49,12 +49,11 @@ app.use((req, res, next) => {
 app.use(authMiddleware, async (req, res, next) => {
   console.log('authMiddleware...')
   try {
-    //const { userId } = req.auth;
+    const { userId } = req.auth;
 
-    //const { rol_actual, estado_rol } = await resolveUserRole(userId);
-    //const permitido =
-    //['cientifico', 'administrador'].includes(rol_actual) && estado_rol === 'aprobado';
-    const permitido = true;
+    const { rol_actual, estado_rol } = await resolveUserRole(userId);
+    const permitido =
+      ['cientifico', 'administrador'].includes(rol_actual) && estado_rol === 'aprobado';
     if (!permitido) {
       console.log('Sin permisos para editar la base de datos: ', permitido)
       return res.status(403).json({
