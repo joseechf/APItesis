@@ -191,6 +191,7 @@ routerPrivadoFlora.patch('/update/:nombreCientifico', async (req, res) => {
     }
     try {
         let resultado
+        await cliente.query("BEGIN");
         for (let fila of filas) {
             console.log('fila: ', fila)
             resultado = await updateFlora(cliente, fila, claveNombre)
@@ -199,11 +200,12 @@ routerPrivadoFlora.patch('/update/:nombreCientifico', async (req, res) => {
             }
             console.log('proceso', resultado)
         }
+        await cliente.query("COMMIT");
         console.log('finalizado : ', resultado)
         res.json({ ok: true, message: "Actualización completada" });
     } catch (error) {
         if (cliente) await cliente.query('ROLLBACK');
-        res.status(400).json({ ok: false, error: error.message });
+        res.status(500).json({ ok: false, error: error.message });
     }
 })
 
