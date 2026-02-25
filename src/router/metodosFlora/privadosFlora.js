@@ -181,7 +181,7 @@ routerPrivadoFlora.patch('/update/:nombreCientifico', async (req, res) => {
     if (!claveNombre || !Array.isArray(filas) || filas.length === 0) {
         return res.status(400).send("Faltan datos requeridos: nombre científico o filas");
     }
-    console.log(filas)
+    console.log('iniciando update de: ', claveNombre)
     let cliente;
     try {
         cliente = await conectar()
