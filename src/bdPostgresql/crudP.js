@@ -74,7 +74,7 @@ export async function insertFloraCompleta(cliente, fila) {
         const camposFlora = ['nombre_cientifico', ...Object.keys(filaFlora)]
         const valoresFlora = [fila.nombre_cientifico, ...Object.values(filaFlora)]
 
-        let consulta = generarConsultaInsert(tablaFlora.tabla, [camposFlora])
+        let consulta = generarConsultaInsert(tablaFlora.tabla, camposFlora)
         await cliente.query(consulta, valoresFlora)
 
         for (const tabla of tablas) {

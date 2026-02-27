@@ -1,4 +1,4 @@
-/*
+
 const TABLAS_PERMITIDAS = new Set([
   'Flora',
   'Imagen',
@@ -183,7 +183,7 @@ export function generarConsultaUpdate(tabla, campos, campoId) {
           RETURNING *;`;
 }
 
-*/
+/*
 export function generarConsultaSelect(tabla, campos = null, campoId = null) {
   if (tabla == 'todas') {
     return `SELECT
@@ -298,3 +298,4 @@ export function generarConsultaUpdate(tabla, campos, campoId) {
 
   return `UPDATE ${tabla} SET ${grupo} WHERE ${campoId} = $${campos.length + 1} RETURNING *;`
 }
+*/
