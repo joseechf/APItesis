@@ -84,27 +84,39 @@ export class TablaSyncRemote {
 */
 
 import { calcularHash } from '../../util/sincronizacion/calcularhash.js';
+import { conectar } from "../../bdPostgresql/crudP.js";
+
+
 
 export class TablaSyncRemote {
     constructor() { }
 
-    async obtenerPendientes(cliente, ultSinc = null) {
+    async obtenerPendientes(ultSinc = null) {
+
         console.log('================ OBTENER PENDIENTES SYNC ================');
 
-        let query = 'SELECT * FROM sincronizacion';
-        const values = [];
+        const cliente = await conectar();
 
-        if (ultSinc !== null) {
-            query += ' WHERE last_upd >= $1';
-            values.push(ultSinc);
+        try {
+
+            let query = 'SELECT * FROM sincronizacion';
+            const values = [];
+
+            if (ultSinc !== null) {
+                query += ' WHERE last_upd >= $1';
+                values.push(ultSinc);
+            }
+
+            const { rows } = await cliente.query(query, values);
+
+            console.log('Total pendientes encontrados:', rows.length);
+            console.log('IDs pendientes:', rows.map(r => r.id));
+
+            return rows;
+
+        } finally {
+            cliente.release();
         }
-
-        const { rows } = await cliente.query(query, values);
-
-        console.log('Total pendientes encontrados:', rows.length);
-        console.log('IDs pendientes:', rows.map(r => r.id));
-
-        return rows;
     }
 
     async registrarSync({ cliente, id, fila, device }) {

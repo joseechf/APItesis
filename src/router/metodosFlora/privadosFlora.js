@@ -46,7 +46,7 @@ routerPrivadoFlora.post('/getsincronizacion', async (req, res) => {
 
     try {
         const tablaSync = new TablaSyncRemote();
-        const respuesta = await tablaSync.obtenerPendientes(req.cliente, ultSinc);
+        const respuesta = await tablaSync.obtenerPendientes(ultSinc);
 
         res.json({ ok: true, respuesta });
     } catch (error) {
