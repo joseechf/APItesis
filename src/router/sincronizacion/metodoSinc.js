@@ -88,12 +88,18 @@ import { calcularHash } from '../../util/sincronizacion/calcularhash.js';
 export class TablaSyncRemote {
     constructor() { }
 
-    async obtenerPendientes(cliente) {
+    async obtenerPendientes(cliente, ultSinc = null) {
         console.log('================ OBTENER PENDIENTES SYNC ================');
 
-        const { rows } = await cliente.query(
-            'SELECT * FROM sincronizacion'
-        );
+        let query = 'SELECT * FROM sincronizacion';
+        const values = [];
+
+        if (ultSinc !== null) {
+            query += ' WHERE last_upd >= $1';
+            values.push(ultSinc);
+        }
+
+        const { rows } = await cliente.query(query, values);
 
         console.log('Total pendientes encontrados:', rows.length);
         console.log('IDs pendientes:', rows.map(r => r.id));

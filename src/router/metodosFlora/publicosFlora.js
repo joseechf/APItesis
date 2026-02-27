@@ -19,7 +19,6 @@ routerPublicFlora.get('/getflora', async (req, res) => {
     try {
         let consulta = generarConsultaSelect('todas')
         const respuesta = await select(consulta)
-        console.log('datos crudos: ', respuesta)
         const dtos = respuesta.rows.map(f => formatearEspecieParaDTO(f));
         console.log('despues formatear: ', dtos)
         res.json({ ok: true, respuesta: dtos })

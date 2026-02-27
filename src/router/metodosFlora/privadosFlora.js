@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import dotenv from 'dotenv'
 
+import { TablaSyncRemote } from '../sincronizacion/metodoSinc.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -38,14 +40,17 @@ routerPrivadoFlora.post('/getflora/porids', async (req, res) => {
 });
 
 routerPrivadoFlora.post('/getsincronizacion', async (req, res) => {
-    console.log(' obtener metadatos sinc ')
+    console.log(' obtener metadatos sinc ');
+
     const { ultSinc } = req.body;
+
     try {
-        const consulta = `SELECT * FROM sincronizacion WHERE last_upd >= $1`;
-        const respuesta = await select(consulta, ultSinc);
-        console.log('metadatos sincronizacion: ', respuesta.rows)
-        res.json({ ok: true, respuesta: respuesta.rows });
+        const tablaSync = new TablaSyncRemote();
+        const respuesta = await tablaSync.obtenerPendientes(req.cliente, ultSinc);
+
+        res.json({ ok: true, respuesta });
     } catch (error) {
+        console.error(error);
         res.status(400).send(error.message);
     }
 });
