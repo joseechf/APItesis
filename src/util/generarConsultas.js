@@ -43,6 +43,9 @@ SELECT
     STRING_AGG(DISTINCT TRIM(u.utilidad), '|')                AS utilidad,
     STRING_AGG(DISTINCT i.url_foto || '@@' || i.estado, '|')  AS imagen
 FROM Flora AS f
+INNER JOIN sincronizacion AS s
+    ON s.id = f.nombre_cientifico
+    AND s.is_delete = FALSE
 LEFT JOIN Imagen AS i
     ON f.nombre_cientifico = i.nombre_cientifico
 LEFT JOIN Utilidad AS u
