@@ -139,37 +139,23 @@ export async function deleteById(consulta, atributo) {
 }
 
 
-export async function deleteByIdSinc(consulta, nombre_cientifico) {
-    const cliente = await conectar()
-    const sync = new TablaSyncRemote(cliente.pool)
+export async function deleteByIdSinc(nombre_cientifico) {
+    const cliente = await conectar();
+    const sync = new TablaSyncRemote();
 
     try {
-        await cliente.query('BEGIN')
+        await cliente.query('BEGIN');
 
-        await sync.registrarBorrado(cliente, nombre_cientifico)
+        await sync.registrarBorrado(cliente, nombre_cientifico);
 
-        const respuesta = await cliente.query(
-            consulta,
-            [nombre_cientifico]
-        )
-
-        await cliente.query('COMMIT')
-        return { ok: true, fila: respuesta }
+        await cliente.query('COMMIT');
+        return { ok: true };
 
     } catch (error) {
-        await cliente.query('ROLLBACK')
-
-        return {
-            ok: false,
-            errorFormateado: {
-                code: error.code,
-                tablaAfectada: error.table,
-                constraint: error.constraint,
-                message: error.message,
-            }
-        }
+        await cliente.query('ROLLBACK');
+        return { ok: false, error };
     } finally {
-        cliente.release()
+        cliente.release();
     }
 }
 

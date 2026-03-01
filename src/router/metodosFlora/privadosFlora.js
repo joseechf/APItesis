@@ -1,7 +1,7 @@
 import express from "express";
 import { Router } from "express";
 import { conectar, select, deleteByIdSinc, updateFlora, insertFloraCompleta } from "../../bdPostgresql/crudP.js";
-import { generarConsultaSelect, generarConsultaDelete } from "../../util/generarConsultas.js";
+import { generarConsultaSelect } from "../../util/generarConsultas.js";
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -158,6 +158,8 @@ routerPrivadoFlora.delete('/deleteImagen', (req, res) => {
     }
 });
 
+// comentado porque de momento nadie debe poder eliminar por completo un registro
+/* 
 routerPrivadoFlora.delete('/delete/:nombreCientifico', async (req, res) => {
     console.log('inicia eliminacion...')
     const { nombreCientifico } = req.params
@@ -179,6 +181,24 @@ routerPrivadoFlora.delete('/delete/:nombreCientifico', async (req, res) => {
         res.status(400).send(error.message)
     }
 })
+*/
+
+routerPrivadoFlora.delete('/softdelete/:nombreCientifico', async (req, res) => {
+    const { nombreCientifico } = req.params;
+
+    try {
+        const resp = await deleteByIdSinc(nombreCientifico);
+
+        if (!resp.ok) {
+            throw resp;
+        }
+
+        res.json({ ok: true });
+
+    } catch (error) {
+        res.status(400).send(error.message);
+    }
+});
 
 routerPrivadoFlora.patch('/update/:nombreCientifico', async (req, res) => {
     const { nombreCientifico: claveNombre } = req.params
