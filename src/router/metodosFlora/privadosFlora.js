@@ -25,65 +25,155 @@ const upload = multer({
 });
 
 routerPrivadoFlora.post('/getflora/porids', async (req, res) => {
-    console.log(' obtener segun id ')
+
+    console.log('========== POST /getflora/porids ==========')
+    console.log('Body recibido:', req.body)
+
     const { ids } = req.body;
+
     if (!Array.isArray(ids) || ids.length === 0) {
+        console.log('IDs inválidos o vacíos')
         return res.json({ ok: true, respuesta: [] });
     }
+
     try {
-        const consulta = generarConsultaSelect('todosById');
-        const respuesta = await select(consulta, ids);
+
+        console.log('Cantidad de IDs:', ids.length)
+
+        const consulta = generarConsultaSelect('todosById')
+        console.log('Consulta generada:', consulta)
+
+        const respuesta = await select(consulta, ids)
+
+        if (!respuesta || respuesta.ok === false) {
+            console.error('Error proveniente de select():', respuesta)
+            return res.status(500).json({
+                ok: false,
+                origen: 'select',
+                error: respuesta?.errorFormateado
+            })
+        }
+
+        console.log('Filas obtenidas:', respuesta.rowCount)
+
+        console.log('========== FIN OK ==========')
         res.json({ ok: true, respuesta: respuesta.rows });
+
     } catch (error) {
-        res.status(400).send(error.message);
+
+        console.error('ERROR EN /getflora/porids')
+        console.error(error)
+
+        res.status(400).json({ ok: false, message: error.message });
     }
 });
 
 routerPrivadoFlora.post('/getsincronizacion', async (req, res) => {
-    console.log(' obtener metadatos sinc ');
+
+    console.log('========== POST /getsincronizacion ==========')
+    console.log('Body recibido:', req.body)
 
     const { ultSinc } = req.body;
 
     try {
+
+        console.log('Ultima sincronización enviada por cliente:', ultSinc)
+
         const tablaSync = new TablaSyncRemote();
+
         const respuesta = await tablaSync.obtenerPendientes(ultSinc);
 
+        console.log('Cantidad de registros pendientes:', respuesta?.length ?? 0)
+
+        console.log('========== FIN OK ==========')
+
         res.json({ ok: true, respuesta });
+
     } catch (error) {
+
+        console.error('ERROR EN /getsincronizacion')
         console.error(error);
-        res.status(400).send(error.message);
+
+        res.status(400).json({ ok: false, message: error.message });
     }
 });
 
 
 routerPrivadoFlora.post('/insertflora', async (req, res) => {
-    console.log('inicia insertar flora  ')
+
+    console.log('========== POST /insertflora ==========')
+
+    const start = Date.now()
+
     const { filas } = req.body;
-    console.log('obtengo para insertar: ', filas)
+
+    console.log('Cantidad de filas recibidas:', filas?.length)
+
+    if (!Array.isArray(filas) || filas.length === 0) {
+        console.log('No hay filas para insertar')
+        return res.json({ ok: true });
+    }
+
     let cliente;
+
     try {
         cliente = await conectar()
+        console.log('Conexión a BD OK')
     } catch (error) {
-        console.log(error)
+        console.error('Error al conectar:', error)
         return res.status(500).send("Error al conectar con la base de datos");
     }
+
     try {
-        let resultado
+
         await cliente.query("BEGIN");
-        for (let fila of filas) {
+        console.log('BEGIN OK')
+
+        let resultado;
+
+        for (let i = 0; i < filas.length; i++) {
+
+            const fila = filas[i]
+
+            console.log(`Procesando fila ${i + 1}/${filas.length}`)
+            console.log('Nombre científico:', fila?.nombre_cientifico)
+
             resultado = await insertFloraCompleta(cliente, fila)
+
+            if (!resultado || resultado.ok === false) {
+                console.error('Error en insertFloraCompleta:', resultado)
+                throw new Error('Error insertando flora completa')
+            }
         }
+
         await cliente.query("COMMIT");
-        console.log('finalizado : ', resultado)
+        console.log('COMMIT OK')
+
+        console.log('Tiempo total (ms):', Date.now() - start)
+        console.log('========== FIN INSERT OK ==========')
+
         res.json(resultado)
+
     } catch (error) {
-        if (cliente) await cliente.query('ROLLBACK');
-        res.status(400).send(error.message)
+
+        console.error('ERROR EN /insertflora')
+        console.error(error)
+
+        if (cliente) {
+            await cliente.query('ROLLBACK');
+            console.error('ROLLBACK ejecutado')
+        }
+
+        res.status(400).json({ ok: false, message: error.message })
+
+    } finally {
+
+        if (cliente) {
+            cliente.release?.();
+            console.log('Conexión liberada')
+        }
     }
-    finally {
-        if (cliente) cliente.release?.();
-    }
-})
+});
 
 routerPrivadoFlora.post('/insertImagen', upload.single('imagen'), (req, res) => {
     console.log('insertando imagen ...');
@@ -184,54 +274,122 @@ routerPrivadoFlora.delete('/delete/:nombreCientifico', async (req, res) => {
 */
 
 routerPrivadoFlora.delete('/softdelete/:nombreCientifico', async (req, res) => {
+
+    console.log('========== DELETE /softdelete ==========')
+
     const { nombreCientifico } = req.params;
 
+    console.log('Nombre científico recibido:', nombreCientifico)
+
+    if (!nombreCientifico) {
+        console.log('Parámetro vacío')
+        return res.status(400).json({ ok: false, message: 'Nombre científico requerido' });
+    }
+
     try {
+
         const resp = await deleteByIdSinc(nombreCientifico);
 
-        if (!resp.ok) {
-            throw resp;
+        console.log('Respuesta deleteByIdSinc:', resp)
+
+        if (!resp || resp.ok === false) {
+            console.error('Error lógico en delete:', resp)
+            return res.status(500).json({
+                ok: false,
+                error: resp?.errorFormateado ?? 'Error desconocido'
+            });
         }
+
+        console.log('Soft delete ejecutado correctamente')
+        console.log('========== FIN DELETE OK ==========')
 
         res.json({ ok: true });
 
     } catch (error) {
-        res.status(400).send(error.message);
+
+        console.error('ERROR EN DELETE /softdelete')
+        console.error(error)
+
+        res.status(400).json({ ok: false, message: error.message });
     }
 });
 
 routerPrivadoFlora.patch('/update/:nombreCientifico', async (req, res) => {
+
+    console.log('========== PATCH /update ==========')
+
     const { nombreCientifico: claveNombre } = req.params
     const { filas } = req.body
+
+    console.log('Nombre científico:', claveNombre)
+    console.log('Cantidad de filas:', filas?.length)
+
     if (!claveNombre || !Array.isArray(filas) || filas.length === 0) {
+        console.log('Validación fallida')
         return res.status(400).send("Faltan datos requeridos: nombre científico o filas");
     }
-    console.log('iniciando update de: ', claveNombre)
+
     let cliente;
+
     try {
         cliente = await conectar()
+        console.log('Conexión BD OK')
     } catch (error) {
-        console.log(error)
+        console.error('Error conectando BD:', error)
         return res.status(500).send("Error al conectar con la base de datos");
     }
+
     try {
-        let resultado
+
         await cliente.query("BEGIN");
-        for (let fila of filas) {
-            console.log('fila: ', fila)
+        console.log('BEGIN OK')
+
+        let resultado;
+
+        for (let i = 0; i < filas.length; i++) {
+
+            const fila = filas[i]
+
+            console.log(`Procesando fila ${i + 1}/${filas.length}`)
+            console.log('Contenido fila:', fila)
+
             resultado = await updateFlora(cliente, fila, claveNombre)
-            if (!resultado.ok) {
-                throw new Error(`Error al actualizar: ${JSON.stringify(resultado.errorFormateado)}`);
+
+            if (!resultado || resultado.ok === false) {
+                console.error('Error en updateFlora:', resultado)
+                throw new Error(
+                    `Error al actualizar fila ${i + 1}: ${JSON.stringify(resultado?.errorFormateado)}`
+                );
             }
-            console.log('proceso', resultado)
+
+            console.log('Fila actualizada correctamente')
         }
+
         await cliente.query("COMMIT");
-        console.log('finalizado : ', resultado)
+        console.log('COMMIT OK')
+        console.log('========== FIN UPDATE OK ==========')
+
         res.json({ ok: true, message: "Actualización completada" });
+
     } catch (error) {
-        if (cliente) await cliente.query('ROLLBACK');
+
+        console.error('ERROR EN PATCH /update')
+        console.error(error)
+
+        if (cliente) {
+            await cliente.query('ROLLBACK');
+            console.error('ROLLBACK ejecutado')
+        }
+
         res.status(500).json({ ok: false, error: error.message });
+
+    } finally {
+
+        if (cliente) {
+            cliente.release?.();
+            console.log('Conexión liberada')
+        }
     }
-})
+});
 
 export default routerPrivadoFlora
