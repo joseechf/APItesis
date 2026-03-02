@@ -19,13 +19,15 @@ export async function conectar() {
 }
 
 export async function select(consulta, atributo = null) {
-    let respuesta
+    let cliente
     try {
         console.log('--- SELECT INICIO ---')
         console.log('Consulta:', consulta)
         console.log('Atributo:', atributo)
 
-        const cliente = await conectar()
+        cliente = await conectar()
+
+        let respuesta
 
         if (atributo != null) {
             respuesta = await cliente.query(consulta, [atributo])
@@ -39,28 +41,35 @@ export async function select(consulta, atributo = null) {
         return respuesta
 
     } catch (error) {
-        console.error('--- ERROR EN SELECT ---')
-        console.error('Consulta que falló:', consulta)
-        console.error('Error completo:', error)
 
-        const errorFormateado = {
-            code: error.code,
-            tablaAfectada: error.table,
-            constraint: error.constraint,
-            message: error.message,
+        console.error('--- ERROR EN SELECT ---')
+        console.error(error)
+
+        return {
+            ok: false,
+            errorFormateado: {
+                code: error.code,
+                tablaAfectada: error.table,
+                constraint: error.constraint,
+                message: error.message,
+            }
         }
 
-        return { ok: false, errorFormateado };
+    } finally {
+        if (cliente) {
+            cliente.release()
+        }
     }
 }
 
 export async function insert(consulta, atributos) {
+    let cliente
     try {
         console.log('--- INSERT INICIO ---')
         console.log('Consulta:', consulta)
         console.log('Valores:', atributos)
 
-        const cliente = await conectar()
+        cliente = await conectar()
 
         const respuesta = await cliente.query(consulta, atributos)
 
@@ -83,6 +92,10 @@ export async function insert(consulta, atributos) {
         }
 
         return { ok: false, errorFormateado };
+    } finally {
+        if (cliente) {
+            cliente.release()
+        }
     }
 }
 
@@ -90,7 +103,6 @@ export async function insert(consulta, atributos) {
 export async function insertFloraCompleta(cliente, fila) {
 
     const sync = new TablaSyncRemote(cliente.pool)
-
     try {
         console.log('========== INSERT FLORA COMPLETA ==========')
         console.log('Nombre científico:', fila.nombre_cientifico)
@@ -193,6 +205,10 @@ export async function insertFloraCompleta(cliente, fila) {
                 message: error.message,
             }
         }
+    } finally {
+        if (cliente) {
+            cliente.release()
+        }
     }
 }
 
@@ -200,8 +216,9 @@ export async function insertFloraCompleta(cliente, fila) {
 
 
 export async function deleteById(consulta, atributo) {
+    let cliente
     try {
-        const cliente = await conectar()
+        cliente = await conectar()
         const respuesta = await cliente.query(consulta, [atributo])
         return { ok: true, fila: respuesta }
     } catch (error) {
@@ -212,15 +229,20 @@ export async function deleteById(consulta, atributo) {
             message: error.message,
         }
         return { ok: false, errorFormateado };
+    } finally {
+        if (cliente) {
+            cliente.release()
+        }
     }
 }
 
 
 export async function deleteByIdSinc(nombre_cientifico) {
-    const cliente = await conectar();
+    let cliente
     const sync = new TablaSyncRemote();
 
     try {
+        cliente = await conectar();
         await cliente.query('BEGIN');
 
         await sync.registrarBorrado(cliente, nombre_cientifico);
@@ -239,12 +261,13 @@ export async function deleteByIdSinc(nombre_cientifico) {
 
 
 export async function update(consulta, atributos) {
+    let cliente
     try {
         console.log('--- UPDATE INICIO ---')
         console.log('Consulta:', consulta)
         console.log('Valores:', atributos)
 
-        const cliente = await conectar()
+        cliente = await conectar()
 
         const respuesta = await cliente.query(consulta, atributos)
 
@@ -268,6 +291,10 @@ export async function update(consulta, atributos) {
         }
 
         return { ok: false, errorFormateado };
+    } finally {
+        if (cliente) {
+            cliente.release()
+        }
     }
 }
 
@@ -373,6 +400,10 @@ export async function updateFlora(cliente, fila, nombre_cientifico) {
                 message: error.message,
             }
         }
+    } finally {
+        if (cliente) {
+            cliente.release()
+        }
     }
 }
 
@@ -407,6 +438,10 @@ async function updateTablaSimple(cliente, tabla, filaFiltrada, nombre_cientifico
         console.error('Error:', error)
 
         throw error
+    } finally {
+        if (cliente) {
+            cliente.release()
+        }
     }
 }
 
@@ -460,6 +495,10 @@ async function auxiliarUpdate(cliente, campos, atributos, nombre_cientifico, tab
         console.error('Error:', error)
 
         throw error
+    } finally {
+        if (cliente) {
+            cliente.release()
+        }
     }
 }
 

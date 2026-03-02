@@ -384,7 +384,6 @@ routerPrivadoFlora.patch('/update/:nombreCientifico', async (req, res) => {
         res.status(500).json({ ok: false, error: error.message });
 
     } finally {
-
         if (cliente) {
             cliente.release?.();
             console.log('Conexión liberada')
