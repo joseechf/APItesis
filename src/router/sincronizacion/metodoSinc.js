@@ -1,87 +1,4 @@
-/*import { calcularHash } from '../../util/sincronizacion/calcularhash.js';
 
-export class TablaSyncRemote {
-    constructor() { }
-
-    async obtenerPendientes(cliente) {
-        const { rows } = await cliente.query(
-            'SELECT * FROM sincronizacion'
-        );
-        return rows;
-    }
-
-    async registrarSync({ cliente, id, fila, device }) {
-
-        const hash = calcularHash(fila);
-
-        const { rows } = await cliente.query(
-            'SELECT version FROM sincronizacion WHERE id = $1 LIMIT 1',
-            [id]
-        );
-
-        if (rows.length === 0) {
-            // INSERT
-            await cliente.query(
-                `
-        INSERT INTO sincronizacion
-        (id, is_new, is_update, is_delete, hash, version, device, last_upd)
-        VALUES ($1, TRUE, FALSE, FALSE, $2, 1, $3, NOW())
-        `,
-                [id, hash, device]
-            );
-        } else {
-            // UPDATE
-            const versionActual = rows[0].version ?? 1;
-
-            await cliente.query(
-                `
-        UPDATE sincronizacion SET
-          is_new = FALSE,
-          is_update = TRUE,
-          is_delete = FALSE,
-          hash = $2,
-          version = $3,
-          device = $4,
-          last_upd = NOW()
-        WHERE id = $1
-        `,
-                [id, hash, versionActual + 1, device]
-            );
-        }
-    }
-
-    async registrarUpsert(cliente, especie) {
-        return this.registrarSync({
-            cliente,
-            id: especie.nombre_cientifico,
-            fila: especie,
-            device: 'api',
-        });
-    }
-
-    async registrarBorrado(cliente, id) {
-        await cliente.query(
-            `
-        INSERT INTO sincronizacion
-        (id, is_new, is_update, is_delete, hash, version, device, last_upd)
-        VALUES ($1, FALSE, FALSE, TRUE, '', 1, 'api', NOW())
-        ON CONFLICT (id) DO UPDATE SET
-            is_new = FALSE,
-            is_update = FALSE,
-            is_delete = TRUE,
-            hash = '',
-            version = sincronizacion.version + 1,
-            last_upd = NOW()
-        `,
-            [id]
-        );
-    }
-
-    async limpiarSincronizacion(cliente) {
-        await cliente.query('DELETE FROM sincronizacion');
-    }
-}
-*/
 
 import { calcularHash } from '../../util/sincronizacion/calcularhash.js';
 import { conectar } from "../../bdPostgresql/crudP.js";
@@ -93,7 +10,7 @@ export class TablaSyncRemote {
 
     async obtenerPendientes(ultSinc = null) {
 
-        console.log('================ OBTENER PENDIENTES SYNC ================');
+        await this.eliminarHuerfanos()
 
         const cliente = await conectar();
 
@@ -109,8 +26,6 @@ export class TablaSyncRemote {
 
             const { rows } = await cliente.query(query, values);
 
-            console.log('Total pendientes encontrados:', rows.length);
-            console.log('IDs pendientes:', rows.map(r => r.id));
 
             return rows;
 
@@ -119,43 +34,47 @@ export class TablaSyncRemote {
         }
     }
 
-    async registrarSync({ cliente, id, fila, device }) {
+    async eliminarHuerfanos() {
+        const cliente = await conectar();
+        try {
+            const query = `
+            DELETE FROM sincronizacion s
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM Flora f
+                WHERE f.nombre_cientifico = s.id
+            )
+        `;
+            await cliente.query(query);
+        } finally {
+            cliente.release();
+        }
+    }
 
-        console.log('================ REGISTRAR SYNC ================');
-        console.log('ID:', id);
-        console.log('Device:', device);
-        console.log('Fila recibida:', JSON.stringify(fila, null, 2));
+    async registrarSync({ cliente, id, fila, usuario }) {
 
         const hash = calcularHash(fila);
-        console.log('Hash calculado:', hash);
 
         const { rows } = await cliente.query(
             'SELECT version FROM sincronizacion WHERE id = $1 LIMIT 1',
             [id]
         );
 
-        console.log('Resultado búsqueda previa:', rows);
 
         if (rows.length === 0) {
-            console.log('🆕 No existe registro previo → INSERT version 1');
 
             await cliente.query(
                 `
                 INSERT INTO sincronizacion
-                (id, is_new, is_update, is_delete, hash, version, device, last_upd)
+                (id, is_new, is_update, is_delete, hash, version, usuario, last_upd)
                 VALUES ($1, TRUE, FALSE, FALSE, $2, 1, $3, NOW())
                 `,
-                [id, hash, device]
+                [id, hash, usuario]
             );
 
-            console.log('✅ INSERT ejecutado correctamente');
         } else {
             const versionActual = rows[0].version ?? 1;
             const nuevaVersion = versionActual + 1;
-
-            console.log('🔄 Registro existente → UPDATE');
-            console.log('Versión actual:', versionActual);
-            console.log('Nueva versión:', nuevaVersion);
 
             await cliente.query(
                 `
@@ -165,55 +84,45 @@ export class TablaSyncRemote {
                   is_delete = FALSE,
                   hash = $2,
                   version = $3,
-                  device = $4,
+                  usuario = $4,
                   last_upd = NOW()
                 WHERE id = $1
                 `,
-                [id, hash, nuevaVersion, device]
+                [id, hash, nuevaVersion, usuario]
             );
 
-            console.log('✅ UPDATE ejecutado correctamente');
         }
 
-        console.log('================ FIN REGISTRAR SYNC ================');
     }
 
-    async registrarUpsert(cliente, especie) {
+    async registrarUpsert(cliente, especie, correo) {
 
-        console.log('================ REGISTRAR UPSERT ================');
-        console.log('Especie recibida:', especie?.nombre_cientifico);
 
         return this.registrarSync({
             cliente,
             id: especie.nombre_cientifico,
             fila: especie,
-            device: 'api',
+            usuario: correo,
         });
     }
 
-    async registrarBorrado(cliente, id) {
-
-        console.log('================ REGISTRAR BORRADO ================');
-        console.log('ID a borrar:', id);
-
+    async registrarBorrado(cliente, id, correo) {
         await cliente.query(
             `
-            INSERT INTO sincronizacion
-            (id, is_new, is_update, is_delete, hash, version, device, last_upd)
-            VALUES ($1, FALSE, FALSE, TRUE, '', 1, 'api', NOW())
-            ON CONFLICT (id) DO UPDATE SET
-                is_new = FALSE,
-                is_update = FALSE,
-                is_delete = TRUE,
-                hash = '',
-                version = sincronizacion.version + 1,
-                last_upd = NOW()
-            `,
-            [id]
+        INSERT INTO sincronizacion
+        (id, is_new, is_update, is_delete, hash, version, "usuario, last_upd)
+        VALUES ($1, FALSE, FALSE, TRUE, '', 1, $2, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+            is_new = FALSE,
+            is_update = FALSE,
+            is_delete = TRUE,
+            hash = '',
+            usuario = $2,
+            version = sincronizacion.version + 1,
+            last_upd = NOW()
+        `,
+            [id, correo]
         );
-
-        console.log('🗑 Borrado registrado (soft delete remoto)');
-        console.log('================ FIN REGISTRAR BORRADO ================');
     }
 
     async limpiarSincronizacion(cliente) {

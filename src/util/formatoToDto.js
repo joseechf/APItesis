@@ -1,3 +1,4 @@
+// esta función convierte los String VO a listas con valores separados, en vez de algo|algo2 => algo, algo2
 function formatearEspecieParaDTO(raw) {
     const separador = (str) =>
         typeof str === 'string' && str.trim().length

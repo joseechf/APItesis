@@ -13,6 +13,7 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+//const ROOT_PATH = path.resolve(__dirname, '../');
 const ROOT_PATH = path.join(__dirname, '..');
 
 dotenv.config()
@@ -28,6 +29,12 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json())
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ ok: false, message: "JSON mal formado..." })
+  }
+  next(err);
+})
 app.use(cookieParser())
 
 app.get('/', (req, res) => {
@@ -47,7 +54,6 @@ app.use((req, res, next) => {
 });
 
 app.use(authMiddleware, async (req, res, next) => {
-  console.log('authMiddleware...')
   try {
     const { userId } = req.auth;
 
@@ -73,12 +79,16 @@ app.use(routerPrivadoFlora)
 
 app.use(routerAdmin)
 
-app.use((res) => {
-  res.send(' NO ENCONTRAMOS ESA RUTA ')
-})
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(err.status || 500).send(err.message || 'Error interno');
+  next(err);
+});
 
 const PORT = process.env.PORT || 3001;
 const HOST = '0.0.0.0';
+
+console.log('Ruta imágenes:', path.join(ROOT_PATH, 'public/imagenes'));
 
 app.listen(PORT, HOST, () => {
   console.log(`API corriendo en http://${HOST}:${PORT}`);

@@ -17,18 +17,16 @@ routerPublicFlora.use(express.json())
 routerPublicFlora.get('/getflora', async (req, res) => {
 
     console.log('========== GET /getflora ==========')
-    console.log('Query params:', req.query)
-    console.log('Headers:', req.headers)
 
     try {
 
         const consulta = generarConsultaSelect('todas')
 
-        console.log('Consulta generada:', consulta)
+        //console.log('Consulta generada:', consulta)
 
         const respuesta = await select(consulta)
 
-        // 🔎 Validar si select devolvió error estructurado
+        //  Validar si select devolvió error estructurado
         if (!respuesta || respuesta.ok === false) {
 
             console.error('Error proveniente de select():', respuesta)
@@ -62,12 +60,14 @@ routerPublicFlora.get('/getflora', async (req, res) => {
             }
         })
 
-        console.log('Cantidad de DTO generados:', dtos.length)
-        console.log('Primer DTO (si existe):', dtos[0])
+        dtos.map((registro) => {
+            console.log('registro =============', registro)
+        })
 
         console.log('========== FIN GET OK ==========')
 
-        res.json({ ok: true, respuesta: dtos })
+        //res.json({ ok: true, respuesta: dtos })
+        res.status(200).json({ ok: true, data: dtos })
 
     } catch (error) {
 

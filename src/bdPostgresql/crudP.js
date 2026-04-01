@@ -21,9 +21,6 @@ export async function conectar() {
 export async function select(consulta, atributo = null) {
     let cliente
     try {
-        console.log('--- SELECT INICIO ---')
-        console.log('Consulta:', consulta)
-        console.log('Atributo:', atributo)
 
         cliente = await conectar()
 
@@ -34,9 +31,6 @@ export async function select(consulta, atributo = null) {
         } else {
             respuesta = await cliente.query(consulta)
         }
-
-        console.log('Filas obtenidas:', respuesta.rowCount)
-        console.log('--- SELECT FIN OK ---')
 
         return respuesta
 
@@ -100,119 +94,63 @@ export async function insert(consulta, atributos) {
 }
 
 
-export async function insertFloraCompleta(cliente, fila) {
+export async function insertFloraCompleta(cliente, datosLimpios, correo) {
 
     const sync = new TablaSyncRemote(cliente.pool)
     try {
-        console.log('========== INSERT FLORA COMPLETA ==========')
-        console.log('Nombre científico:', fila.nombre_cientifico)
-        console.log('Fila completa recibida:', fila)
-
-        const tablaFlora = tablas.find(t => t.tabla === 'Flora')
-
-        if (!tablaFlora) {
-            throw new Error('No se encontró configuración para tabla Flora')
-        }
-
-        const filaFlora = {}
-
-        for (const campo of tablaFlora.campos) {
-            if (fila[campo] !== undefined) {
-                filaFlora[campo] = fila[campo]
-            }
-        }
-
-        console.log('Campos Flora filtrados:', filaFlora)
-
-        const camposFlora = ['nombre_cientifico', ...Object.keys(filaFlora)]
-        const valoresFlora = [fila.nombre_cientifico, ...Object.values(filaFlora)]
-
-        console.log('Campos a insertar en Flora:', camposFlora)
-        console.log('Valores a insertar en Flora:', valoresFlora)
-
-        let consulta = generarConsultaInsert(tablaFlora.tabla, camposFlora)
-
-        console.log('Consulta Flora generada:', consulta)
-
-        await cliente.query(consulta, valoresFlora)
-
-        console.log('Insert Flora OK')
+        const tablaFlora = tablas.find(t => 'Flora' in t)
+        const camposFlora = ['nombre_cientifico', ...Object.keys(datosLimpios.Flora)]
+        const atributos = [datosLimpios.nombre_cientifico, ...Object.values(datosLimpios.Flora)]
+        let consulta = generarConsultaInsert(Object.keys(tablaFlora)[0], camposFlora)
+        await cliente.query(consulta, atributos)
 
         for (const tabla of tablas) {
 
-            if (tabla.tabla === 'Flora') continue
+            const nombreTabla = Object.keys(tabla)[0]
+            const camposTabla = Object.values(tabla)[0]
 
-            const datosArray = fila[tabla.tabla] ?? []
+            if (nombreTabla === 'Flora') continue
 
-            console.log(`Procesando tabla hija: ${tabla.tabla}`)
-            console.log('Datos recibidos:', datosArray)
+            const datosArray = datosLimpios.listas[nombreTabla] ?? []
 
             if (!Array.isArray(datosArray) || datosArray.length === 0) {
-                console.log('Sin datos, se omite tabla:', tabla.tabla)
                 continue
             }
 
-            console.log('Borrando registros previos en:', tabla.tabla)
-
             await cliente.query(
-                `DELETE FROM ${tabla.tabla} WHERE nombre_cientifico = $1`,
-                [fila.nombre_cientifico]
+                `DELETE FROM ${nombreTabla} WHERE nombre_cientifico = $1`,
+                [datosLimpios.nombre_cientifico]
             )
 
-            console.log('Delete previo OK')
+            const campos = Array.isArray(camposTabla)
+                ? camposTabla
+                : [camposTabla]
 
-            consulta = generarConsultaInsert(
-                tabla.tabla,
-                [...tabla.campos, 'nombre_cientifico']
+            const consulta = generarConsultaInsert(
+                nombreTabla,
+                [...campos, 'nombre_cientifico']
             )
-
-            console.log('Consulta generada para tabla hija:', consulta)
 
             for (const dato of datosArray) {
-
-                console.log('Insertando fila en', tabla.tabla)
-                console.log('Dato:', dato)
-
                 await cliente.query(
                     consulta,
-                    [...Object.values(dato), fila.nombre_cientifico]
+                    [...Object.values(dato), datosLimpios.nombre_cientifico]
                 )
             }
-
-            console.log('Tabla hija procesada OK:', tabla.tabla)
         }
 
-        console.log('Registrando sincronización...')
-        await sync.registrarUpsert(cliente, fila)
-        console.log('Sync registrada OK')
+        await sync.registrarUpsert(cliente, datosLimpios, correo)
 
-        console.log('========== FIN INSERT FLORA COMPLETA OK ==========')
 
         return { ok: true }
 
     } catch (error) {
 
         console.error('========== ERROR EN INSERT FLORA COMPLETA ==========')
-        console.error('Nombre científico:', fila?.nombre_cientifico)
-        console.error('Error completo:', error)
 
-        return {
-            ok: false,
-            errorFormateado: {
-                code: error.code,
-                tablaAfectada: error.table,
-                constraint: error.constraint,
-                message: error.message,
-            }
-        }
-    } finally {
-        if (cliente) {
-            cliente.release()
-        }
+        throw error
     }
 }
-
-
 
 
 export async function deleteById(consulta, atributo) {
@@ -237,7 +175,7 @@ export async function deleteById(consulta, atributo) {
 }
 
 
-export async function deleteByIdSinc(nombre_cientifico) {
+export async function deleteByIdSinc(nombre_cientifico, correo) {
     let cliente
     const sync = new TablaSyncRemote();
 
@@ -245,7 +183,7 @@ export async function deleteByIdSinc(nombre_cientifico) {
         cliente = await conectar();
         await cliente.query('BEGIN');
 
-        await sync.registrarBorrado(cliente, nombre_cientifico);
+        await sync.registrarBorrado(cliente, nombre_cientifico, correo);
 
         await cliente.query('COMMIT');
         return { ok: true };
@@ -258,8 +196,7 @@ export async function deleteByIdSinc(nombre_cientifico) {
     }
 }
 
-
-
+/*
 export async function update(consulta, atributos) {
     let cliente
     try {
@@ -296,24 +233,19 @@ export async function update(consulta, atributos) {
             cliente.release()
         }
     }
-}
+}*/
 
 
 
-export async function updateFlora(cliente, fila, nombre_cientifico) {
+export async function updateFlora(cliente, fila, nombre_cientifico, correo) {
 
     const sync = new TablaSyncRemote(cliente.pool)
 
     try {
 
         console.log('========== UPDATE FLORA COMPLETA ==========')
-        console.log('Nombre científico:', nombre_cientifico)
-        console.log('Fila recibida:', fila)
 
-        await cliente.query('BEGIN')
-        console.log('BEGIN OK')
-
-        const tablaFlora = tablas.find(t => t.tabla === 'Flora')
+        const tablaFlora = tablas.find(t => 'Flora' in t)
 
         if (!tablaFlora) {
             throw new Error('No se encontró configuración de tabla Flora')
@@ -321,7 +253,7 @@ export async function updateFlora(cliente, fila, nombre_cientifico) {
 
         const filaFiltrada = {}
 
-        for (const campo of tablaFlora.campos) {
+        for (const campo of tablaFlora.Flora) {
             if (fila[campo] !== undefined) {
                 filaFiltrada[campo] = fila[campo]
             }
@@ -331,12 +263,7 @@ export async function updateFlora(cliente, fila, nombre_cientifico) {
 
         if (Object.keys(filaFiltrada).length > 0) {
             console.log('Actualizando tabla Flora...')
-            await updateTablaSimple(
-                cliente,
-                tablaFlora.tabla,
-                filaFiltrada,
-                nombre_cientifico
-            )
+            await updateTablaSimple(cliente, 'Flora', filaFiltrada, nombre_cientifico)
             console.log('Update Flora OK')
         } else {
             console.log('No hay campos para actualizar en Flora')
@@ -344,27 +271,34 @@ export async function updateFlora(cliente, fila, nombre_cientifico) {
 
         for (const tabla of tablas) {
 
-            if (tabla.tabla === 'Flora') continue
+            const nombreTabla = Object.keys(tabla)[0]
+            const camposTabla = Object.values(tabla)[0]
 
-            const datosArray = fila[tabla.tabla]
+            if (nombreTabla === 'Flora') continue
 
-            console.log(`Procesando tabla hija: ${tabla.tabla}`)
+            const datosArray = fila[nombreTabla]
+
+            console.log(`Procesando tabla hija: ${nombreTabla}`)
             console.log('Datos recibidos:', datosArray)
 
             if (!Array.isArray(datosArray)) {
-                console.log('No es array, se omite:', tabla.tabla)
+                console.log('No es array, se omite:', nombreTabla)
                 continue
             }
 
+            const campos = Array.isArray(camposTabla)
+                ? camposTabla
+                : [camposTabla]
+
             await auxiliarUpdate(
                 cliente,
-                tabla.campos,
+                campos,
                 datosArray,
                 nombre_cientifico,
-                tabla.tabla
+                nombreTabla
             )
 
-            console.log('Tabla hija actualizada:', tabla.tabla)
+            console.log('Tabla hija actualizada:', nombreTabla)
         }
 
         const especieCompleta = {
@@ -373,11 +307,9 @@ export async function updateFlora(cliente, fila, nombre_cientifico) {
         }
 
         console.log('Registrando sincronización...')
-        await sync.registrarUpsert(cliente, especieCompleta)
+        await sync.registrarUpsert(cliente, especieCompleta, correo)
         console.log('Sync OK')
 
-        await cliente.query('COMMIT')
-        console.log('COMMIT OK')
         console.log('========== FIN UPDATE FLORA OK ==========')
 
         return { ok: true }
@@ -388,9 +320,6 @@ export async function updateFlora(cliente, fila, nombre_cientifico) {
         console.error('Nombre científico:', nombre_cientifico)
         console.error('Error completo:', error)
 
-        await cliente.query('ROLLBACK')
-        console.error('ROLLBACK ejecutado')
-
         return {
             ok: false,
             errorFormateado: {
@@ -399,10 +328,6 @@ export async function updateFlora(cliente, fila, nombre_cientifico) {
                 constraint: error.constraint,
                 message: error.message,
             }
-        }
-    } finally {
-        if (cliente) {
-            cliente.release()
         }
     }
 }
@@ -438,18 +363,12 @@ async function updateTablaSimple(cliente, tabla, filaFiltrada, nombre_cientifico
         console.error('Error:', error)
 
         throw error
-    } finally {
-        if (cliente) {
-            cliente.release()
-        }
     }
 }
 
 async function auxiliarUpdate(cliente, campos, atributos, nombre_cientifico, tabla) {
 
     console.log('--- auxiliarUpdate ---')
-    console.log('Tabla:', tabla)
-    console.log('Atributos recibidos:', atributos)
 
     let consulta = generarConsultaDelete(tabla, 'nombre_cientifico')
 
@@ -457,21 +376,18 @@ async function auxiliarUpdate(cliente, campos, atributos, nombre_cientifico, tab
 
         if (Array.isArray(atributos)) {
 
-            console.log('Eliminando registros previos...')
-            console.log('Consulta DELETE:', consulta)
-            console.log('Valor nombre_cientifico:', nombre_cientifico)
-
             await cliente.query(
                 consulta,
                 [nombre_cientifico]
             )
 
             console.log('DELETE OK')
-
-            consulta = generarConsultaInsert(
-                tabla,
-                [...campos, 'nombre_cientifico']
-            )
+            if (atributos.length) {
+                consulta = generarConsultaInsert(
+                    tabla,
+                    [...campos, 'nombre_cientifico']
+                )
+            }
 
             console.log('Consulta INSERT generada:', consulta)
 
@@ -495,10 +411,6 @@ async function auxiliarUpdate(cliente, campos, atributos, nombre_cientifico, tab
         console.error('Error:', error)
 
         throw error
-    } finally {
-        if (cliente) {
-            cliente.release()
-        }
     }
 }
 

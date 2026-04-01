@@ -26,13 +26,12 @@ export function authMiddleware(req, res, next) {
 
     const token = auth.split(' ')[1];
 
-    jwt.verify(token, getKey, { algorithms: ['ES256'], }, (err, decoded) => {
+    jwt.verify(token, getKey, { algorithms: ['ES256', 'RS256', 'HS256'] }, (err, decoded) => {
         if (err) {
-            console.log('token invalido')
+            console.log('Error JWT:', err.message);
             return res.status(401).json({ message: 'Token inválido' });
         }
-
-        req.auth = { userId: decoded.sub };
+        req.auth = { userId: decoded.sub, email: decoded.email };
         next();
     });
 }

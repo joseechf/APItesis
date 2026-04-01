@@ -1,7 +1,8 @@
+
+
 export const tablas = [
     {
-        tabla: 'Flora',
-        campos: [
+        Flora: [
             'da_sombra',
             'flor_distintiva',
             'fruta_distintiva',
@@ -18,28 +19,17 @@ export const tablas = [
         ]
     },
     {
-        tabla: 'NombreComun',
-        campos: [
-            'nombre_comun',
-        ]
+        NombreComun: 'nombre_comun',
     },
     {
-        tabla: 'Utilidad',
-        campos: [
-            'utilidad',
-        ]
+        Utilidad: 'utilidad',
     },
     {
-        tabla: 'Origen',
-        campos: [
-            'origen',
-        ]
+        Origen: 'origen',
     },
     {
-        tabla: 'Imagen',
-        campos: [
-            'url_foto',
-            'estado'
-        ]
+        Imagen:
+            ['url_foto',
+                'estado']
     }
 ]
