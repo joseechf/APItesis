@@ -7,8 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import dotenv from 'dotenv'
-import "../../util/validarString.js";
-import ValidadorFlora from "../../util/validarString.js";
+import { ValidadorFlora } from "../../util/validarData.js";
 
 import { TablaSyncRemote } from '../sincronizacion/metodoSinc.js';
 
@@ -28,26 +27,45 @@ const upload = multer({
 });
 
 routerPrivadoFlora.post('/getflora/porids', async (req, res) => {
-
     console.log('========== POST /getflora/porids ==========')
     console.log('BODY COMPLETO:', req.body)
-    const { ids } = req.body;
+
+    const { ids } = req.body
+
     if (!Array.isArray(ids) || ids.length === 0) {
-        console.log('IDs inválidos o vacíos')
-        return res.json({ ok: true, data: [] });
-    }
-    const idsValidados = [];
-    for (let i = 0; i < ids.length; i++) {
-        const resultado = ValidadorFlora.validarnc(ids[i]);
-        if (!resultado.ok) {
-            console.log(`400 --- Error en id ${i}: ${resultado.errores.join(', ')}`)
-            return res.status(400).json({
-                ok: false,
-                message: `Error en id ${i}: ${resultado.errores.join(', ')}`
-            });
+        const salida = {
+            ok: true,
+            status: 200,
+            data: []
         }
-        idsValidados.push(resultado.datos);
+
+        console.log('IDs inválidos o vacíos:', salida)
+        return res.status(200).json(salida)
     }
+
+    const idsValidados = []
+
+    for (let i = 0; i < ids.length; i++) {
+        const resultado = ValidadorFlora.validarnc(ids[i])
+
+        if (!resultado.ok) {
+            const salida = {
+                ok: false,
+                status: 400,
+                error: {
+                    type: 'validation',
+                    field: `ids[${i}]`,
+                    message: resultado.errores
+                }
+            }
+
+            console.error('ERROR VALIDACIÓN:', salida)
+            return res.status(400).json(salida)
+        }
+
+        idsValidados.push(resultado.valor)
+    }
+
     try {
         console.log('Cantidad de IDs:', idsValidados.length)
 
@@ -56,143 +74,181 @@ routerPrivadoFlora.post('/getflora/porids', async (req, res) => {
 
         const respuesta = await select(consulta, idsValidados)
 
-        if (!respuesta || respuesta.ok === false) {
-            console.error('Error proveniente de select():', respuesta)
-
-            return res.status(500).json({
+        if (!respuesta.ok) {
+            const salida = {
                 ok: false,
-                origen: 'select',
-                error: respuesta?.errorFormateado
-            });
+                status: respuesta.status || 500,
+                error: respuesta.error
+            }
+
+            console.error('ERROR SELECT:', salida)
+            return res.status(salida.status).json(salida)
         }
-        console.log('Filas obtenidas:', respuesta.rowCount)
-        console.log('========== FIN OK ==========')
-        return res.status(200).json({
+
+        const salida = {
             ok: true,
-            data: respuesta.rows
-        });
+            status: 200,
+            data: respuesta.data
+        }
+
+        console.log('Filas obtenidas:', salida.data.length)
+        console.log('========== FIN OK ==========')
+
+        return res.status(200).json(salida)
+
     } catch (error) {
-        console.error('ERROR EN /getflora/porids')
-        console.error(error)
-        return res.status(500).json({
+        const salida = {
             ok: false,
-            message: error.message
-        });
+            status: 500,
+            error: {
+                type: 'server',
+                message: error.message
+            }
+        }
+
+        console.error('ERROR EN /getflora/porids:', salida)
+        return res.status(500).json(salida)
     }
-});
+})
 
 routerPrivadoFlora.post('/getsincronizacion', async (req, res) => {
-
     console.log('========== POST /getsincronizacion ==========')
     console.log('Body recibido:', req.body)
-
-    const { ultSinc } = req.body;
-
+    const { ultSinc } = req.body
     try {
-
-        console.log('Ultima sincronización enviada por cliente:', ultSinc)
-
-        const tablaSync = new TablaSyncRemote();
-
-        const respuesta = await tablaSync.obtenerPendientes(ultSinc);
-
-        console.log('Cantidad de registros pendientes:', respuesta?.length ?? 0)
-
+        console.log('Última sincronización enviada por cliente:', ultSinc)
+        const tablaSync = new TablaSyncRemote()
+        const respuesta = await tablaSync.obtenerPendientes(ultSinc)
+        const salida = {
+            ok: true,
+            status: 200,
+            data: respuesta
+        }
+        console.log('Cantidad de registros pendientes:', salida.data?.length ?? 0)
         console.log('========== FIN OK ==========')
 
-        res.status(200).json({ ok: true, data: respuesta })
+        return res.status(200).json(salida)
 
     } catch (error) {
-
-        console.error('ERROR EN /getsincronizacion')
-        console.error(error);
-
-        res.status(500).json({ ok: false, message: error.message });
+        const salida = {
+            ok: false,
+            status: 500,
+            error: {
+                type: 'server',
+                message: error.message
+            }
+        }
+        console.error('ERROR EN /getsincronizacion:', salida)
+        return res.status(500).json(salida)
     }
-});
+})
 
 
 routerPrivadoFlora.post('/insertflora', async (req, res) => {
-
     console.log('========== POST /insertflora ==========')
 
-    const { filas } = req.body;
-    const { email } = req.auth;
-    console.log('usuario: ', email)
-    console.dir(filas, { depth: null, colors: true });
+    const { fila } = req.body
+    const { email } = req.auth
 
-    if (!Array.isArray(filas) || filas.length === 0) {
-        console.log('No hay filas para insertar')
-        return res.json({ ok: true });
-    }
+    console.log('usuario:', email)
+    console.dir(fila, { depth: null, colors: true })
 
-    const filasValidadas = [];
-
-    for (let i = 0; i < filas.length; i++) {
-        const resultado = ValidadorFlora.validar(filas[i]);
-
-        if (!resultado.ok) {
-            console.log(`400 ---  Error en la fila ${i}: ${resultado.errores.join(', ')}`)
-            return res.status(400).json({
-                ok: false,
-                message: `Error en la fila ${i}: ${resultado.errores.join(', ')}`
-            });
+    if (fila == null) {
+        const salida = {
+            ok: true,
+            status: 200,
+            data: null
         }
 
-        filasValidadas.push(resultado.datos);
+        console.log('No hay fila para insertar:', salida)
+        return res.status(200).json(salida)
     }
 
-    let cliente;
+    const resultado = ValidadorFlora.validar(fila)
+
+    if (!resultado.ok) {
+        const salida = {
+            ok: false,
+            status: 400,
+            error: {
+                type: 'validation',
+                field: 'fila',
+                message: resultado.errores
+            }
+        }
+
+        console.error('ERROR VALIDACIÓN:', salida)
+        return res.status(400).json(salida)
+    }
+
+    let cliente
 
     try {
         cliente = await conectar()
         console.log('Conexión a BD OK')
-    } catch (error) {
-        console.error('Error al conectar:', error)
-        return res.status(500).send("Error al conectar con la base de datos");
-    }
 
-    try {
+        await cliente.query('BEGIN')
 
-        await cliente.query("BEGIN");
-        console.log('BEGIN OK');
+        const respuesta = await insertFloraCompleta(cliente, resultado.datos, email)
 
-        for (const datosLimpios of filasValidadas) {
-            await insertFloraCompleta(cliente, datosLimpios, email);
+        if (!respuesta.ok) {
+            await cliente.query('ROLLBACK')
+
+            const salida = {
+                ok: false,
+                status: respuesta.status || 500,
+                error: respuesta.error
+            }
+
+            console.error('ERROR INSERT FLORA COMPLETA:', salida)
+            console.error('ROLLBACK ejecutado')
+
+            return res.status(salida.status).json(salida)
         }
 
-        await cliente.query("COMMIT");
+        await cliente.query('COMMIT')
         console.log('COMMIT OK')
 
-        console.log('========== FIN INSERT OK ==========')
+        const salida = {
+            ok: true,
+            status: 200,
+            data: null
+        }
 
-        res.status(200).json({ ok: true });
+        console.log('========== FIN INSERT OK ==========')
+        return res.status(200).json(salida)
 
     } catch (error) {
-
-        console.error(error)
-
         if (cliente) {
-            await cliente.query('ROLLBACK');
+            await cliente.query('ROLLBACK')
             console.error('ROLLBACK ejecutado')
         }
-        res.status(error.statusCode || 500).json({ ok: false, message: error.message })
+
+        const salida = {
+            ok: false,
+            status: error.statusCode || 500,
+            error: {
+                type: 'server',
+                message: error.message
+            }
+        }
+
+        console.error('ERROR EN /insertflora:', salida)
+        return res.status(salida.status).json(salida)
 
     } finally {
-
         if (cliente) {
-            cliente.release?.();
-            console.log('Conexión liberada')
+            cliente.release?.()
         }
     }
-});
+})
 
 routerPrivadoFlora.post('/insertImagen', upload.single('imagen'), (req, res) => {
     console.log('insertando imagen ...');
     if (!req.file) {
         return res.status(400).json({
             ok: false,
-            message: 'No se subió ninguna imagen'
+           error: { message: 'No se subió ninguna imagen'}
         });
     }
     try {
@@ -200,12 +256,13 @@ routerPrivadoFlora.post('/insertImagen', upload.single('imagen'), (req, res) => 
         const nombreCientifico = req.body.nombreCientifico;
         const resultado = ValidadorFlora.validarnc(nombreCientifico);
         if (!resultado.ok) {
+            console.log(resultado.errores)
             return res.status(400).json({
                 ok: false,
-                message: resultado.errores
+                error: {message: resultado.errores}
             });
         }
-        const nombreLimpio = resultado.datos;
+        const nombreLimpio = resultado.valor;
         const esJpg =
             buffer[0] === 0xff &&
             buffer[1] === 0xd8 &&
@@ -214,7 +271,7 @@ routerPrivadoFlora.post('/insertImagen', upload.single('imagen'), (req, res) => 
         if (!esJpg) {
             return res.status(400).json({
                 ok: false,
-                message: 'El archivo no es un JPG válido'
+                error: {message: 'El archivo no es un JPG válido'}
             });
         }
         const MAX_SIZE = 5 * 1024 * 1024;
@@ -224,7 +281,8 @@ routerPrivadoFlora.post('/insertImagen', upload.single('imagen'), (req, res) => 
                 message: 'Imagen demasiado grande (máx 5MB)'
             });
         }
-        const nombre = `${nombreLimpio}_${Date.now()}.jpg`;
+        const nombreArchivo = `${nombreLimpio}_${Date.now()}.jpg`;
+        const nombre = nombreArchivo.replaceAll(' ','')
         const ROOT_PATH = path.join(__dirname, '../../../..');
         const dir = path.join(ROOT_PATH, 'public', 'imagenes');
         const file = path.join(dir, nombre);
@@ -238,17 +296,24 @@ routerPrivadoFlora.post('/insertImagen', upload.single('imagen'), (req, res) => 
             throw new Error('PUBLIC_BASE_URL no está definida');
         }
         const url = `${baseUrl}/imagenes/${nombre}`;
-        console.log('la url:', url);
-        return res.status(200).json({
+        const salida = {
             ok: true,
+            status: 200,
             data: url
-        });
+        }
+        console.log('imagen bien insertada ==== la url:', url);
+        return res.status(200).json(salida)
     } catch (e) {
-        console.error('Error al guardar imagen:', e.message);
-        return res.status(500).json({
+        const salida = {
             ok: false,
-            message: e.message
-        });
+            status: 500,
+            error: {
+                type: 'server',
+                message: error.message
+            }
+        }
+        console.error('ERROR EN insertImagen:', salida)
+        return res.status(500).json(salida)
     }
 });
 
@@ -256,179 +321,265 @@ routerPrivadoFlora.delete('/deleteImagen', (req, res) => {
     const { fileName } = req.body;
 
     try {
-
         if (!ValidadorFlora.validarNombre(fileName)) {
-            return { ok: false, error: 'nombre del archivo incorrecto' };
+            const salida = {
+                ok: false,
+                status: 400,
+                error: {
+                    type: 'validation',
+                    field: 'nombre_imagen',
+                    message: 'Nombre de imagen incorrecta'
+                }
+            }
+            console.error('ERROR VALIDACIÓN:', salida)
+            return res.status(400).json(salida)
         }
         const ROOT_PATH = path.join(__dirname, '../../../..');
         const carpetaImagenes = path.join(ROOT_PATH, 'public', 'imagenes');
         const filePath = path.join(carpetaImagenes, fileName);
         if (!filePath.startsWith(carpetaImagenes)) {
-            return res.status(400).json({
+            const salida = {
                 ok: false,
-                message: 'Ruta inválida'
-            });
+                status: 400,
+                error: {
+                    type: 'validation',
+                    field: 'fileName',
+                    message: 'Ruta inválida'
+                }
+            }
+            console.error('ERROR VALIDACIÓN:', salida)
+            return res.status(400).json(salida)
         }
 
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
             return res.status(200).json({ ok: true });
         }
-        return res.status(404).json({
+        onsole.error('ERROR ARCHIVO NO ENCONTRADO:', salida)
+        return res.status(404).json(salida)
+
+    }  catch (error) {
+        const salida = {
             ok: false,
-            message: 'Archivo no encontrado'
-        });
+            status: 500,
+            error: {
+                type: 'server',
+                message: error.message
+            }
+        }
 
-    } catch (e) {
-
-        console.error('Error borrando imagen:', e.message);
-
-        return res.status(500).json({
-            ok: false,
-            message: e.message
-        });
+        console.error('ERROR EN /deleteImagen:', salida)
+        return res.status(500).json(salida)
     }
 });
 
 
 routerPrivadoFlora.delete('/softdelete/:nombreCientifico', async (req, res) => {
-
     console.log('========== DELETE /softdelete ==========')
 
-    const { nombreCientifico } = req.params;
-    const { email } = req.auth;
-    console.log('usuario: ', email)
-    const resultado = ValidadorFlora.validarnc(nombreCientifico);
+    const { nombreCientifico } = req.params
+    const { email } = req.auth
+
+    console.log('usuario:', email)
+
+    const resultado = ValidadorFlora.validarnc(nombreCientifico)
 
     if (!resultado.ok) {
-        return res.status(400).json({
+        const salida = {
             ok: false,
-            message: resultado.errores
-        });
+            status: 400,
+            error: {
+                type: 'validation',
+                field: 'nombreCientifico',
+                message: resultado.errores,
+            }
+        }
+
+        console.error('ERROR VALIDACIÓN:', salida)
+        return res.status(400).json(salida)
     }
 
     try {
-
-        const resp = await deleteByIdSinc(resultado.datos, email);
+        const resp = await deleteByIdSinc(resultado.valor, email)
 
         console.log('Respuesta deleteByIdSinc:', resp)
 
-        if (!resp || resp.ok === false) {
-            console.error('Error lógico en delete:', resp)
-
-            return res.status(500).json({
+        if (!resp || !resp.ok) {
+            const salida = {
                 ok: false,
-                message: resp?.errorFormateado ?? 'Error desconocido'
-            });
+                status: resp?.status || 500,
+                error: resp?.error || {
+                    type: 'server',
+                    message: 'Error desconocido'
+                }
+            }
+
+            console.error('ERROR LÓGICO EN DELETE:', salida)
+            return res.status(salida.status).json(salida)
         }
 
-        console.log('Soft delete ejecutado correctamente')
+        const salida = {
+            ok: true,
+            status: 200,
+            data: {
+                message: 'soft-delete correcto'
+            }
+        }
+
+        console.log('Soft delete ejecutado correctamente:', salida)
         console.log('========== FIN DELETE OK ==========')
 
-        return res.status(200).json({
-            ok: true,
-            message: 'soft-delete correcto'
-        });
+        return res.status(200).json(salida)
 
     } catch (error) {
-
-        console.error('ERROR EN DELETE /softdelete')
-        console.error(error)
-
-        return res.status(500).json({
+        const salida = {
             ok: false,
-            message: error.message
-        });
+            status: 500,
+            error: {
+                type: 'server',
+                message: error.message
+            }
+        }
+
+        console.error('ERROR EN DELETE /softdelete:', salida)
+        return res.status(500).json(salida)
     }
-});
+})
 
 routerPrivadoFlora.patch('/update/:nombreCientifico', async (req, res) => {
-
     console.log('========== PATCH /update ==========')
-    const { email } = req.auth;
-    console.log('usuario: ', email)
-    const { nombreCientifico: claveNombre } = req.params;
-    const valNombre = ValidadorFlora.validarnc(claveNombre);
-    if (!valNombre.ok) {
-        return res.status(400).json({ ok: false, message: 'Nombre inválido' });
-    }
 
-    const { fila } = req.body;
-    console.dir(fila, { depth: null, colors: true });
+    const { email } = req.auth
+    const { nombreCientifico: claveNombre } = req.params
+    const { fila } = req.body
+
+    console.log('usuario:', email)
+    console.dir(fila, { depth: null, colors: true })
+
+    const valNombre = ValidadorFlora.validarnc(claveNombre)
+
+    if (!valNombre.ok) {
+        const salida = {
+            ok: false,
+            status: 400,
+            error: {
+                type: 'validation',
+                field: 'nombreCientifico',
+                message: valNombre.errores,
+            }
+        }
+
+        console.error('ERROR VALIDACIÓN:', salida)
+        return res.status(400).json(salida)
+    }
 
     if (!fila || typeof fila !== 'object') {
-        console.log('Validación fallida');
-        return res.status(400).json({
+        const salida = {
             ok: false,
-            message: "Faltan datos requeridos: nombre científico o fila"
-        });
+            status: 400,
+            error: {
+                type: 'validation',
+                field: 'fila',
+                message: 'Faltan datos requeridos: fila'
+            }
+        }
+
+        console.error('ERROR VALIDACIÓN:', salida)
+        return res.status(400).json(salida)
     }
 
-    const resultadoValidacion = ValidadorFlora.validar(fila);
+    const resultadoValidacion = ValidadorFlora.validar(fila)
 
     if (!resultadoValidacion.ok) {
-        console.log(`400 --- Error en la fila: ${resultadoValidacion.errores.join(', ')}`);
-        return res.status(400).json({
+        const salida = {
             ok: false,
-            message: `Error en la fila: ${resultadoValidacion.errores.join(', ')}`
-        });
-    }
-
-    let cliente;
-
-    try {
-        cliente = await conectar();
-        console.log('Conexión BD OK');
-    } catch (error) {
-        console.error('Error conectando BD:', error);
-        return res.status(500).send("Error al conectar con la base de datos");
-    }
-
-    try {
-
-        await cliente.query("BEGIN");
-
-        const resultado = await updateFlora(cliente, fila, claveNombre, email);
-
-        if (!resultado || resultado.ok === false) {
-            console.error('Error en updateFlora:', resultado);
-
-            const error = new Error(
-                `Error al actualizar: ${JSON.stringify(resultado?.errorFormateado)}`
-            );
-            error.statusCode = 400;
-            throw error;
+            status: 400,
+            error: {
+                type: 'validation',
+                field: 'fila',
+                message: resultadoValidacion.errores,
+            }
         }
 
-        console.log('Fila actualizada correctamente');
+        console.error('ERROR VALIDACIÓN:', salida)
+        return res.status(400).json(salida)
+    }
 
-        await cliente.query("COMMIT");
-        console.log('COMMIT OK');
-        console.log('========== FIN UPDATE OK ==========');
+    const resultadofila = {...resultadoValidacion.datos.Flora,...resultadoValidacion.datos.listas}
 
-        res.status(200).json({ ok: true, message: "Actualización completada" });
+    let cliente
+
+    try {
+        cliente = await conectar()
+        console.log('Conexión BD OK')
+
+        await cliente.query('BEGIN')
+
+        const resultado = await updateFlora(
+            cliente,
+            resultadofila,
+            valNombre.valor,
+            email
+        )
+
+        if (!resultado || !resultado.ok) {
+            await cliente.query('ROLLBACK')
+
+            const salida = {
+                ok: false,
+                status: resultado?.status || 500,
+                error: resultado?.error || {
+                    type: 'server',
+                    message: 'Error desconocido al actualizar'
+                }
+            }
+
+            console.error('ERROR EN updateFlora:', salida)
+            console.error('ROLLBACK ejecutado')
+
+            return res.status(salida.status).json(salida)
+        }
+
+        await cliente.query('COMMIT')
+
+        const salida = {
+            ok: true,
+            status: 200,
+            data: {
+                message: 'Actualización completada'
+            }
+        }
+
+        console.log('Fila actualizada correctamente:', salida)
+        console.log('COMMIT OK')
+        console.log('========== FIN UPDATE OK ==========')
+
+        return res.status(200).json(salida)
 
     } catch (error) {
-
-        console.error('ERROR EN PATCH /update');
-        console.error(error);
-
         if (cliente) {
-            await cliente.query('ROLLBACK');
-            console.error('ROLLBACK ejecutado');
+            await cliente.query('ROLLBACK')
+            console.error('ROLLBACK ejecutado')
         }
 
-        res.status(error.statusCode || 500).json({
+        const salida = {
             ok: false,
-            message: error.message
-        });
+            status: error.statusCode || 500,
+            error: {
+                type: 'server',
+                message: error.message
+            }
+        }
+
+        console.error('ERROR EN PATCH update:', salida)
+        return res.status(salida.status).json(salida)
 
     } finally {
         if (cliente) {
-            cliente.release?.();
-            console.log('Conexión liberada');
+            cliente.release?.()
+            console.log('Conexión liberada')
         }
     }
-});
+})
 
 export default routerPrivadoFlora

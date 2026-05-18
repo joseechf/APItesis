@@ -15,68 +15,37 @@ routerPublicFlora.use(express.json())
 
 
 routerPublicFlora.get('/getflora', async (req, res) => {
-
     console.log('========== GET /getflora ==========')
-
     try {
-
         const consulta = generarConsultaSelect('todas')
-
-        //console.log('Consulta generada:', consulta)
-
         const respuesta = await select(consulta)
-
-        //  Validar si select devolvió error estructurado
-        if (!respuesta || respuesta.ok === false) {
-
-            console.error('Error proveniente de select():', respuesta)
-
-            return res.status(500).json({
-                ok: false,
-                origen: 'select',
-                error: respuesta?.errorFormateado ?? 'Error desconocido en select'
-            })
+        // ERROR DESDE CRUDP
+        if (!respuesta.ok) {
+            console.error('ERROR EN SELECT')
+            console.error(respuesta.error)
+            return res.status(respuesta.status).json(respuesta)
         }
-
-        if (!respuesta.rows) {
-
-            console.error('respuesta.rows es undefined:', respuesta)
-
-            return res.status(500).json({
-                ok: false,
-                error: 'respuesta.rows undefined'
-            })
-        }
-
-        console.log('Cantidad de filas obtenidas:', respuesta.rowCount)
-
-        const dtos = respuesta.rows.map(f => {
-            try {
-                return formatearEspecieParaDTO(f)
-            } catch (e) {
-                console.error('Error formateando fila:', f)
-                console.error('Error DTO:', e)
-                throw e
-            }
-        })
-
-        dtos.map((registro) => {
-            console.log('registro =============', registro)
-        })
-
+        // DTO
+        const dtos = respuesta.data.map(fila =>
+            formatearEspecieParaDTO(fila)
+        )
+        console.log('Cantidad de filas:', dtos.length)
         console.log('========== FIN GET OK ==========')
-
-        //res.json({ ok: true, respuesta: dtos })
-        res.status(200).json({ ok: true, data: dtos })
-
+        return res.status(200).json({
+            ok: true,
+            status: 200,
+            data: dtos
+        })
     } catch (error) {
-
         console.error('========== ERROR EN GET /getflora ==========')
-        console.error('Error completo:', error)
-
-        res.status(400).json({
+        console.error(error)
+        return res.status(500).json({
             ok: false,
-            message: error.message
+            status: 500,
+            error: {
+                type: 'server',
+                message: error.message
+            }
         })
     }
 })

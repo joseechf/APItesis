@@ -110,7 +110,7 @@ export class TablaSyncRemote {
         await cliente.query(
             `
         INSERT INTO sincronizacion
-        (id, is_new, is_update, is_delete, hash, version, "usuario, last_upd)
+        (id, is_new, is_update, is_delete, hash, version,usuario, last_upd)
         VALUES ($1, FALSE, FALSE, TRUE, '', 1, $2, NOW())
         ON CONFLICT (id) DO UPDATE SET
             is_new = FALSE,

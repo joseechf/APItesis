@@ -24,10 +24,12 @@ function formatearEspecieParaDTO(raw) {
         pionero: raw.pionero,
         polinizador: raw.polinizador,
         ambiente: raw.ambiente,
+        establecido_sol_sombra: raw.establecido_sol_sombra,
         nativo_america: raw.nativo_america,
         nativo_panama: raw.nativo_panama,
         nativo_azuero: raw.nativo_azuero,
         estrato: raw.estrato,
+        cobertura: raw.cobertura,
 
         NombreComun: toObjList(
             separador(raw.nombre_comun),

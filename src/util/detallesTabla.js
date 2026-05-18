@@ -12,10 +12,12 @@ export const tablas = [
             'pionero',
             'polinizador',
             'ambiente',
+            'establecido_sol_sombra',
             'nativo_america',
             'nativo_panama',
             'nativo_azuero',
-            'estrato'
+            'estrato',
+            'cobertura'
         ]
     },
     {

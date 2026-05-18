@@ -5,6 +5,8 @@ const TABLAS_PERMITIDAS = new Set([
   'Utilidad',
   'NombreComun',
   'Origen',
+  'crecimiento',
+  'siembra'
 ]);
 
 function validarTabla(tabla) {
@@ -125,8 +127,9 @@ export function generarConsultaDelete(tabla, campoId) {
 export function generarConsultaUpdate(tabla, campos, campoId) {
 
   validarTabla(tabla);
-  validarCampos(campos);
   validarCampoId(campoId);
+  
+  validarCampos(campos);
 
   const setClause = campos
     .map((campo, i) => `${campo} = $${i + 1}`)

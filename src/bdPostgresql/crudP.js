@@ -4,18 +4,23 @@ import { TablaSyncRemote } from '../router/sincronizacion/metodoSinc.js'
 
 import { tablas } from "../util/detallesTabla.js";
 
+function crearErrorDB(error) {
+   return {
+      type: 'database',
+      code: error.code,
+      table: error.table,
+      constraint: error.constraint,
+      detail: error.detail,
+      message: error.message,
+   }
+}
+
 export async function conectar() {
-    try {
-        const respuesta = await inicializar()
-        if (respuesta.status !== 200) {
-            throw respuesta.error
-        }
-        const cliente = respuesta.data
-        return cliente
-    } catch (error) {
-        console.log('PROBLEMA DE CONEXION CON BD: ', error)
-        throw { ok: false, error }
-    }
+   const respuesta = await inicializar()
+   if (respuesta.status !== 200) {
+      throw respuesta.error
+   }
+   return respuesta.data
 }
 
 export async function select(consulta, atributo = null) {
@@ -32,21 +37,17 @@ export async function select(consulta, atributo = null) {
             respuesta = await cliente.query(consulta)
         }
 
-        return respuesta
+        return {
+            ok:true,
+            status:200,
+            data:respuesta.rows
+        }
 
     } catch (error) {
-
-        console.error('--- ERROR EN SELECT ---')
-        console.error(error)
-
         return {
-            ok: false,
-            errorFormateado: {
-                code: error.code,
-                tablaAfectada: error.table,
-                constraint: error.constraint,
-                message: error.message,
-            }
+            ok:false,
+            status:500,
+            error:crearErrorDB(error)
         }
 
     } finally {
@@ -59,33 +60,24 @@ export async function select(consulta, atributo = null) {
 export async function insert(consulta, atributos) {
     let cliente
     try {
-        console.log('--- INSERT INICIO ---')
-        console.log('Consulta:', consulta)
-        console.log('Valores:', atributos)
 
         cliente = await conectar()
 
         const respuesta = await cliente.query(consulta, atributos)
 
-        console.log('Fila insertada:', respuesta.rows[0])
-        console.log('--- INSERT FIN OK ---')
-
-        return { ok: true, fila: respuesta.rows[0] }
-
-    } catch (error) {
-        console.error('--- ERROR EN INSERT ---')
-        console.error('Consulta que falló:', consulta)
-        console.error('Valores enviados:', atributos)
-        console.error('Error completo:', error)
-
-        const errorFormateado = {
-            code: error.code,
-            tablaAfectada: error.table,
-            constraint: error.constraint,
-            message: error.message,
+        //return { ok: true, fila: respuesta.rows[0] }
+        return {
+            ok:true,
+            status:201,
+            data: respuesta.rows[0]
         }
 
-        return { ok: false, errorFormateado };
+    } catch (error) {
+         return {
+            ok:false,
+            status:500,
+            error:crearErrorDB(error)
+        }
     } finally {
         if (cliente) {
             cliente.release()
@@ -102,8 +94,8 @@ export async function insertFloraCompleta(cliente, datosLimpios, correo) {
         const camposFlora = ['nombre_cientifico', ...Object.keys(datosLimpios.Flora)]
         const atributos = [datosLimpios.nombre_cientifico, ...Object.values(datosLimpios.Flora)]
         let consulta = generarConsultaInsert(Object.keys(tablaFlora)[0], camposFlora)
-        await cliente.query(consulta, atributos)
-
+        const result = await cliente.query(consulta, atributos)
+        console.log('resultado de query sql insert: ', result)
         for (const tabla of tablas) {
 
             const nombreTabla = Object.keys(tabla)[0]
@@ -142,13 +134,14 @@ export async function insertFloraCompleta(cliente, datosLimpios, correo) {
         await sync.registrarUpsert(cliente, datosLimpios, correo)
 
 
-        return { ok: true }
+        return { ok: true, status:200}
 
     } catch (error) {
-
-        console.error('========== ERROR EN INSERT FLORA COMPLETA ==========')
-
-        throw error
+        return {
+        ok:false,
+        status:500,
+        error:crearErrorDB(error)
+        }
     }
 }
 
@@ -158,15 +151,13 @@ export async function deleteById(consulta, atributo) {
     try {
         cliente = await conectar()
         const respuesta = await cliente.query(consulta, [atributo])
-        return { ok: true, fila: respuesta }
+        return { ok: true, status:200, data: respuesta }
     } catch (error) {
-        const errorFormateado = {
-            code: error.code,
-            tablaAfectada: error.table,
-            constraint: error.constraint,
-            message: error.message,
+        return {
+        ok:false,
+        status:500,
+        error:crearErrorDB(error)
         }
-        return { ok: false, errorFormateado };
     } finally {
         if (cliente) {
             cliente.release()
@@ -186,88 +177,41 @@ export async function deleteByIdSinc(nombre_cientifico, correo) {
         await sync.registrarBorrado(cliente, nombre_cientifico, correo);
 
         await cliente.query('COMMIT');
-        return { ok: true };
+        return { ok: true, status:200}
 
     } catch (error) {
-        await cliente.query('ROLLBACK');
-        return { ok: false, error };
+        if(cliente){
+            await cliente.query('ROLLBACK');
+        }
+        return {
+        ok:false,
+        status:500,
+        error:crearErrorDB(error)
+        }
     } finally {
-        cliente.release();
-    }
+   if(cliente){
+      cliente.release()
+   }
 }
-
-/*
-export async function update(consulta, atributos) {
-    let cliente
-    try {
-        console.log('--- UPDATE INICIO ---')
-        console.log('Consulta:', consulta)
-        console.log('Valores:', atributos)
-
-        cliente = await conectar()
-
-        const respuesta = await cliente.query(consulta, atributos)
-
-        console.log('Filas afectadas:', respuesta.rowCount)
-        console.log('--- UPDATE FIN OK ---')
-
-        return { ok: true, respuesta };
-
-    } catch (error) {
-
-        console.error('--- ERROR EN UPDATE ---')
-        console.error('Consulta que falló:', consulta)
-        console.error('Valores enviados:', atributos)
-        console.error('Error completo:', error)
-
-        const errorFormateado = {
-            code: error.code,
-            tablaAfectada: error.table,
-            constraint: error.constraint,
-            message: error.message,
-        }
-
-        return { ok: false, errorFormateado };
-    } finally {
-        if (cliente) {
-            cliente.release()
-        }
-    }
-}*/
+}
 
 
 
 export async function updateFlora(cliente, fila, nombre_cientifico, correo) {
 
     const sync = new TablaSyncRemote(cliente.pool)
-
     try {
-
-        console.log('========== UPDATE FLORA COMPLETA ==========')
-
         const tablaFlora = tablas.find(t => 'Flora' in t)
 
-        if (!tablaFlora) {
-            throw new Error('No se encontró configuración de tabla Flora')
-        }
-
-        const filaFiltrada = {}
+        var filaFiltrada = {}
 
         for (const campo of tablaFlora.Flora) {
             if (fila[campo] !== undefined) {
                 filaFiltrada[campo] = fila[campo]
             }
         }
-
-        console.log('Campos filtrados para Flora:', filaFiltrada)
-
-        if (Object.keys(filaFiltrada).length > 0) {
-            console.log('Actualizando tabla Flora...')
-            await updateTablaSimple(cliente, 'Flora', filaFiltrada, nombre_cientifico)
-            console.log('Update Flora OK')
-        } else {
-            console.log('No hay campos para actualizar en Flora')
-        }
+        console.log('fila filtrada: ',filaFiltrada)
+        if(filaFiltrada.length !== 0) await updateTablaSimple(cliente, 'Flora', filaFiltrada, nombre_cientifico)
 
         for (const tabla of tablas) {
 
@@ -278,57 +222,28 @@ export async function updateFlora(cliente, fila, nombre_cientifico, correo) {
 
             const datosArray = fila[nombreTabla]
 
-            console.log(`Procesando tabla hija: ${nombreTabla}`)
-            console.log('Datos recibidos:', datosArray)
-
             if (!Array.isArray(datosArray)) {
                 console.log('No es array, se omite:', nombreTabla)
                 continue
             }
-
             const campos = Array.isArray(camposTabla)
                 ? camposTabla
                 : [camposTabla]
 
-            await auxiliarUpdate(
-                cliente,
-                campos,
-                datosArray,
-                nombre_cientifico,
-                nombreTabla
-            )
-
-            console.log('Tabla hija actualizada:', nombreTabla)
+            await auxiliarUpdate(cliente,campos,datosArray,nombre_cientifico,nombreTabla)
         }
-
         const especieCompleta = {
             ...fila,
             nombre_cientifico
         }
-
-        console.log('Registrando sincronización...')
         await sync.registrarUpsert(cliente, especieCompleta, correo)
-        console.log('Sync OK')
-
-        console.log('========== FIN UPDATE FLORA OK ==========')
-
-        return { ok: true }
-
+        return { ok: true, status:200}
     } catch (error) {
-
-        console.error('========== ERROR EN UPDATE FLORA ==========')
-        console.error('Nombre científico:', nombre_cientifico)
-        console.error('Error completo:', error)
-
         return {
-            ok: false,
-            errorFormateado: {
-                code: error.code,
-                tablaAfectada: error.table,
-                constraint: error.constraint,
-                message: error.message,
-            }
-        }
+                ok:false,
+                status:500,
+                error:crearErrorDB(error)
+                }
     }
 }
 
@@ -340,76 +255,40 @@ async function updateTablaSimple(cliente, tabla, filaFiltrada, nombre_cientifico
         Object.keys(filaFiltrada),
         'nombre_cientifico'
     )
-
-    console.log('--- updateTablaSimple ---')
-    console.log('Tabla:', tabla)
-    console.log('Consulta generada:', consulta)
-    console.log('Valores:', [...Object.values(filaFiltrada), nombre_cientifico])
-
+    console.log('consulta en updateTablaSimple: ',consulta)
     try {
-
-        const resultado = await cliente.query(
+        await cliente.query(
             consulta,
             [...Object.values(filaFiltrada), nombre_cientifico]
         )
-
-        console.log('Filas afectadas:', resultado.rowCount)
-
     } catch (error) {
-
-        console.error('ERROR en updateTablaSimple')
-        console.error('Consulta:', consulta)
-        console.error('Valores:', [...Object.values(filaFiltrada), nombre_cientifico])
-        console.error('Error:', error)
-
         throw error
     }
 }
 
 async function auxiliarUpdate(cliente, campos, atributos, nombre_cientifico, tabla) {
-
-    console.log('--- auxiliarUpdate ---')
-
     let consulta = generarConsultaDelete(tabla, 'nombre_cientifico')
-
     try {
-
         if (Array.isArray(atributos)) {
-
             await cliente.query(
                 consulta,
                 [nombre_cientifico]
             )
-
-            console.log('DELETE OK')
             if (atributos.length) {
                 consulta = generarConsultaInsert(
                     tabla,
                     [...campos, 'nombre_cientifico']
                 )
             }
-
-            console.log('Consulta INSERT generada:', consulta)
-
             for (const atributo of atributos) {
-
-                console.log('Insertando atributo:', atributo)
-
                 await cliente.query(
                     consulta,
                     [...Object.values(atributo), nombre_cientifico]
                 )
             }
 
-            console.log('Inserciones completadas en:', tabla)
         }
-
     } catch (error) {
-
-        console.error('ERROR en auxiliarUpdate')
-        console.error('Tabla:', tabla)
-        console.error('Error:', error)
-
         throw error
     }
 }

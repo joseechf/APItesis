@@ -14,15 +14,13 @@ export default defineConfig([
       },
     },
     rules: {
-      // ✅ AQUÍ se usa correctamente @eslint/js
       ...js.configs.recommended.rules,
       "no-unused-vars": [
-      "error",
-      { "varsIgnorePattern": "^_" }
-    ]
+        "error",
+        { "varsIgnorePattern": "^_" }
+      ]
     },
   },
 
-  // ✅ Desactiva reglas que chocan con Prettier
   prettierConfig,
 ]);

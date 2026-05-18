@@ -3,10 +3,13 @@ import dotenv from 'dotenv'
 import cors from 'cors';
 import cookieParser from 'cookie-parser'
 import routerPrivadoFlora from './src/router/metodosFlora/privadosFlora.js';
-import routerAdmin from './src/router/metodosAdmin.js';
-import authMiddleware from './src/router/auth/jwtMiddleware.js'
-import resolveUserRole from './src/router/auth/getRol.js'
-import routerPublicFlora from './src/router/metodosFlora/publicosFlora.js'
+//import routerAdmin from './src/router/metodosAdmin.js';
+import monitoreo from './src/router/metodosFlora/monitoreo.js';
+import Siembra from './src/router/metodosFlora/privadosMonitoreo.js';
+import authMiddleware from './src/router/auth/jwtMiddleware.js';
+import resolveUserRole from './src/router/auth/getRol.js';
+import routerPublicFlora from './src/router/metodosFlora/publicosFlora.js';
+import reporte from './src/router/report/reporte.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -29,6 +32,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json())
+
+
 app.use((err, req, res, next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     return res.status(400).json({ ok: false, message: "JSON mal formado..." })
@@ -43,13 +48,15 @@ app.get('/', (req, res) => {
 
 app.use(routerPublicFlora);
 
+app.use(monitoreo)
+
 app.use(
   '/imagenes',
   express.static(path.join(ROOT_PATH, 'public/imagenes'))
 );
 
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  //console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
 });
 
@@ -76,8 +83,10 @@ app.use(authMiddleware, async (req, res, next) => {
 })
 
 app.use(routerPrivadoFlora)
+app.use(Siembra)
+app.use(reporte)
 
-app.use(routerAdmin)
+
 
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -88,10 +97,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 const HOST = '0.0.0.0';
 
-console.log('Ruta imágenes:', path.join(ROOT_PATH, 'public/imagenes'));
-
 app.listen(PORT, HOST, () => {
   console.log(`API corriendo en http://${HOST}:${PORT}`);
-  console.log(`Imágenes en http://${HOST}:${PORT}/imagenes/`);
 });
 
