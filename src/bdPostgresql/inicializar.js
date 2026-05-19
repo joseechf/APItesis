@@ -14,7 +14,7 @@ export default async function inicializar() {
             user: process.env.POSTGRES_USER,
             password: process.env.POSTGRES_PASSWORD,
         });*/
-        const pool = new Pool({  //conexion con la base de datos de supabase 
+        const pool = new pg.Pool({  //conexion con la base de datos de supabase 
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false,
