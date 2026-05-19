@@ -309,7 +309,7 @@ routerPrivadoFlora.post('/insertImagen', upload.single('imagen'), (req, res) => 
             status: 500,
             error: {
                 type: 'server',
-                message: error.message
+                message: e.message
             }
         }
         console.error('ERROR EN insertImagen:', salida)

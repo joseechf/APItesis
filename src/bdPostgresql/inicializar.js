@@ -20,6 +20,7 @@ export default async function inicializar() {
     rejectUnauthorized: false,
   },
 });
+// la conexion es postgresql://postgres.xpiagtkjmtzjsiwnngug:facillfacilita@aws-0-us-west-2.pooler.supabase.com:6543/postgres
 
         try {
             const client = await pool.connect();
