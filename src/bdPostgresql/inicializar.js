@@ -7,13 +7,19 @@ let pool = null;
 export default async function inicializar() {
 
     if (!pool) {
-        pool = new pg.Pool({
+        /*pool = new pg.Pool({
             host: process.env.HOST,
             port: process.env.POSTGRES_PORT,
             database: process.env.POSTGRES_DB,
             user: process.env.POSTGRES_USER,
             password: process.env.POSTGRES_PASSWORD,
-        });
+        });*/
+        const pool = new Pool({  //conexion con la base de datos de supabase 
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
 
         try {
             const client = await pool.connect();
