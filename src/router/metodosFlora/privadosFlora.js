@@ -291,11 +291,14 @@ routerPrivadoFlora.post('/insertImagen', upload.single('imagen'), (req, res) => 
         }
         fs.writeFileSync(file, buffer);
         console.log('archivo guardado en:', file);
-        const baseUrl = process.env.PUBLIC_BASE_URL;
+        //const baseUrl = process.env.PUBLIC_BASE_URL;
+        
+        //const url = `${baseUrl}/imagenes/${nombre}`;
+        const baseUrl = process.env.PUBLIC_BASE_URL.replace(/\/$/, '');
         if (!baseUrl) {
             throw new Error('PUBLIC_BASE_URL no está definida');
         }
-        const url = `${baseUrl}/imagenes/${nombre}`;
+        const imageUrl = `${baseUrl}/imagenes/${nombre}`;
         const salida = {
             ok: true,
             status: 200,
