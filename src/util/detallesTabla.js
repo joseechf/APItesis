@@ -1,5 +1,3 @@
-
-
 export const tablas = [
     {
         Flora: [
@@ -27,11 +25,9 @@ export const tablas = [
         Utilidad: 'utilidad',
     },
     {
-        Origen: 'origen',
+        Origen: 'origen'
     },
     {
-        Imagen:
-            ['url_foto',
-                'estado']
+        Imagen: ['url_foto','estado']
     }
 ]
